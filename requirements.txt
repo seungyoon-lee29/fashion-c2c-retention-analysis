@@ -1,0 +1,14 @@
+# Core (required) — pipeline runs fully on these alone.
+numpy
+pandas
+pyarrow
+scikit-learn
+scipy
+matplotlib
+pyyaml
+
+# Optional enhancements — code degrades gracefully if missing:
+#   shap       : SHAP driver importances (fallback: sklearn permutation_importance)
+#   lifelines  : Cox + Schoenfeld robustness check (fallback: skipped, KM/CIF computed in numpy)
+shap
+lifelines

@@ -1,78 +1,80 @@
-# 신규 포트폴리오: 아하 모먼트(활성화) 발굴 → 임팩트 추정 (그로스 데이터 분석)
+# 활성화→리텐션 생존분석 + g-계산 임팩트 (그로스 DS 포트폴리오)
 
-## ⚡ 즉시 실행 (이번 승인 범위 — Ultraplan 클라우드 정제 가능하게 git init만)
-> Ultraplan은 **현재 세션 cwd**(`…/Obsidian Vault/marketplace-seller-entry-analysis`)를 git 저장소로 검사함. 거기가 git이 아니라 계속 실패. 사용자가 "지금 폴더에 git init" 선택. → **현재 폴더를 git 저장소로 만들어 이 세션에서 Ultraplan이 뜨게 한다. 전체 구현은 클라우드 정제+teleport 이후.**
-1. 현재 폴더에 `.gitignore` 추가(.venv/ data/raw/ data/*.parquet __pycache__/).
-2. `docs/PLAN.md` = 이 기획서(`~/.claude/plans/parsed-petting-tower.md`) 사본 — 클라우드가 읽을 컨텍스트.
-3. `git init` + `git add -A` + 첫 커밋("plan: growth-activation 기획 + 정리 예정 Olist 스캐폴드").
-4. → 이 세션에서 Ultraplan 재실행하면 통과.
-- ⚠️ 현재 폴더엔 폐기 예정 Olist 코드가 들어있음 → 클라우드 정제/teleport 후 본구현 때 정리(또는 새 폴더로 이전). 지금은 속도 우선으로 그대로 커밋.
-- 참고: 사용자가 GitHub 온라인 repo("project6.23-")도 만들었다고 함 → 원하면 이 로컬 repo의 remote로 연결 가능(별도).
-
----
-
+> **정체성**: "리텐션을 **인과적으로 정직하게** 다루고(검열·누수·교란을 *방법으로* 처리), 모던 시퀀스 모델을
+> 헤드라인이 아니라 **정밀 계측기**로 쓰는 그로스 데이터 사이언티스트."
 
 ## Context (왜)
-취업용 데이터분석 포트폴리오. 사용자는 **전략적 제안이 들어간** 프로젝트를 원한다 — 단순 기술통계가 아니라 그로스 데이터 분석의 정석:
-"목표 Y를 위해 어떤 행동 X를 윈도우 N 내 몇 번 시켜야 하나(아하 모먼트)"를 SHAP·precision/recall·MCC로 발굴하고, **마르코프 체인으로 임팩트("이 지표 올리면 회사가 얼마 나아가나")를 추정**하며, **AI를 언제 쓰고 언제 규칙으로 가는지** 분별해 팀 방향을 제시.
+취업용 그로스 데이터분석 포트폴리오. "목표 Y(전환·리텐션)를 위해 어떤 초기 행동 X를 언제 시켜야 하나"를
+**생존분석**으로 정직하게 발굴하고, 그 행동을 올리면 회사가 얼마나 나아가는지를 **g-계산(인과 표준화)**으로
+추정한다. 데이터는 **MerRec**(Mercari 공식 C2C 행동 이벤트 로그, KDD2025; **가입 필드 없는 순수 행동 로그**).
 
-데이터 여정: Olist(흔함) 폐기 → StockX(거래기록뿐, 행동·유저 없어 아하모먼트 **불가**) 폐기 → **행동 이벤트 로그 필요**. 탐색 결과 무인증·경량·희소·풀퍼널을 만족하는 **MerRec(Mercari 공식, KDD2025)** 채택. (Taobao=8일·풀퍼널아님, REES46/KKBox/Instacart=Kaggle인증+수GB로 제외.)
+여러 라운드 정제로 초기안(아하 임계+마르코프 중심)의 구조적 약점 — 연관/교란 근거, 검열 미처리, 시변 처치에
+부적합한 횡단면 보정 — 을 제거하고 아래로 수렴했다.
 
-- **독립 프로젝트**(crm과 연결 안 함). **`~/Desktop/`에 신규 폴더** 생성.
-- 목표 Y: **전환(buy_comp) 주지표 + 초기 리텐션(재방문) 보조지표** (사용자 확정).
+## 확정 설계 (락)
+- **스파인 = 이산시간 경쟁위험 생존**(person-period 해저드). KM/CIF·Cox는 서술·강건성 동반자.
+- **3층 구조**: 스파인(생존=정체성·단독 방어) · 계측층(시퀀스/next-action 임베딩을 *시변공변량*으로, Tier 2) ·
+  운영층(아하 임계·마르코프를 *운영 규칙/플레이북*으로 강등).
+- **임팩트 = 스파인 재사용 g-computation**: g-formula(주력) + IPTW/MSM(교차, 모형의존 다름) + (여유 시 TMLE).
+  식별가정 = **순차적 교환가능성 + positivity + consistency**, **E-value로 봉투**(Rosenbaum 아님 — 모델 기반엔 E-value).
+- **삼각검증 = "독립 확인"이 아니라 "가정-스트레스"**: 다리마다 식별가정이 다르고 **일치=안심이 아니라 발산=진단**.
+  **사전등록 불일치 프로토콜**(`config.disagreement_threshold_pct`).
+- **누수=인과 공유 장치**: embargo gap을 누수 통제뿐 아니라 인과 estimand에도 강제(레버 t → 결과 t+h, 블랙아웃).
+- **RDD(분석적 임계) 폐기**(임계가 처치를 유발하지 않음 → 식별 불성립). 매칭+Γ는 횡단면 보조로만.
+- 마르코프는 **해저드의 무기억 *근사*** (엄밀 동치 아님 — 시변이력 의존이라 본질은 비마르코프). 과대주장 금지.
 
-## 데이터 (확정)
-- **MerRec** `https://huggingface.co/datasets/mercari-us/merrec` — 날짜폴더(20230501..) 안 파일들. **1파일(68MB)=한 달 완결 로그**(유저 단위 샤딩): 504K 이벤트/7,571유저, event 타입 `item_view·item_like·item_add_to_cart_tap·offer_make·buy_start·buy_comp`.
-- 로드: `20230501/` 파일 **약 5개(~350MB) urllib 캐시** → ~35k 유저, ~1.5k 전환. 컬럼만 선택(user_id, stime, session_id, event_id, item_id, c0/c1_name, brand_name, price).
-- 검증됨(읽기 테스트 통과): user당 이벤트 중앙값 11, 한 달 span, 전환율 ~4%.
+## Phase 0 — 실현가능성 게이트 (스파인 락 전, go/no-go)  ← `src/data.py validate()`
+- **복원**: `user_id`가 세션 간 시간축으로 이어져 유저×스텝 person-period 복원.
+- **이벤트/검열**: 전환=`buy_comp`; 이탈(lapse)=N일 무활동(흡수); 우검열=관측창 종료; 좌측절단=t0(첫 관측, **가입 아님**).
+- **충분성/positivity**: 전환 이벤트 수·person-day·처치 중첩 점검. **시간 단위**(일 vs 2–3일 bin)는 활동 희소성 보고 결정.
+- **GO 기준**: 타임라인 복원 ✓ + 전환 ≥ 임계수 ✓ + 다수 유저 ≥2스텝 관측 ✓ + positivity ✓.
+- **폴백**: 실패 시 단일-horizon 분류로 회귀(사유 기록). positivity 실패 → 인과 주장 철회, **연관 + E-value만**.
 
-## 이름/위치
-- `~/Desktop/growth-activation-analysis` (또는 `aha-moment-impact-analysis`). git init + 첫 커밋(승인 시).
+## 방법론 (MVS 스파인)
+1. **시간축·코호트**: t0=첫 관측("신규-관측 코호트", 좌측절단→생존 **지연진입**). 절단 완화 `t0≥data_start+buffer`.
+   `[t0,t0+W)` 피처 → `[t0+W,t0+W+G)` embargo → `[t0+W+G,+H)` 결과. 아하 윈도우 `n≤W`.
+2. **스파인 — 이산시간 경쟁위험 생존**: person-period(유저×스텝), 스텝별 경쟁 결과 0=지속/1=전환/2=이탈.
+   해저드=풀드 로지스틱(베이스)+**GBM 해저드**(유연)+확률보정. 공변량=시불변 초기행동 + (Tier2)시변 임베딩 — **과거 정보만**.
+   동반자=**KM/Aalen-Johansen CIF** · Cox+**Schoenfeld** · **시간외(out-of-time) 검증**(신뢰 핵심).
+   구조적 정직성: 경쟁위험(정보적 검열 해결)·지연진입(좌측절단)·past-only·embargo(반사성).
+3. **드라이버 + 누수 통제**: 해저드에 **SHAP/순열 중요도** → 초기 행동 선별. **gap sweep**(0→7일) holdout 곡선의
+   **plateau**=누수 제거 성능, gap별 중요도 안정성으로 누수 아티팩트 제거.
+4. **운영층(강등)**: **아하 임계** "X≥k in n"을 운영 가능한 매직넘버(activation 플레이북)로. **마르코프** 흡수체인
+   (`N=(I−Q)⁻¹`, `B=N·R`)은 단순 표현으로만.
 
-## 분석 파이프라인 (사용자 프레임워크를 정밀화)
-1. **북극성/목표 Y (조작적 정의)** — 주: 전환=윈도우 이후 `buy_comp` 발생. 보조: 초기 리텐션=활성 윈도우 이후 주에 재방문. 코호트=첫 활동 기준 신규 유저.
-2. **후보 행동 X (조작적 정의)** — 첫 윈도우(첫 세션 / 첫 3·7일) 내: #view, #like, #add_to_cart, #offer, #session, 카테고리 다양성, 브랜드 다양성, 활동일수.
-3. **X 좁히기 (SHAP)** — `GradientBoosting`(sklearn)으로 Y 예측, **SHAP** 중요도·방향으로 전환/리텐션을 끌어올리는 행동 선별.
-4. **아하 모먼트 임계 (k,n) 탐색** — "X ≥ k in window n" 격자에서 **precision/recall/F1/MCC + lift**로 평가해 조작적으로 아하 모먼트 확정(상관 아닌 분류성능·리프트로 정당화). [crm 계승] train/holdout 분리로 임계 과적합 방지.
-5. **검증** — 아하 달성 vs 미달성 코호트의 리텐션/전환 곡선 + holdout 지표.
-6. **임팩트 추정 (마르코프 체인)** — 유저 상태 {신규→브라우저(view만)→인게이지(like/cart/offer)→전환(buy)→휴면→이탈} 주간 전이행렬 추정 → 아하 달성률을 Δ 올리는 개입을 전이확률에 반영 → 정상상태 활성유저·기대 전환수 변화 시뮬레이션 = "지표 X를 올리면 회사가 얼마 나아가나".
-7. **전략 제안 + AI 사용 분별 (report/strategy_memo.md)** — 팀 방향(온보딩에서 어떤 행동을 몇 번 유도), 실행안(넛지·추천 배치), **AI 분별**: 아하 모먼트는 *단순 규칙*으로 운영(모델 불필요), SHAP·예측모델은 *발굴·개인화*에만; 임계 과적합·관측편향 주의.
+## 임팩트 — g-computation 통합 + 삼각
+- **주력 g-formula**: 시변 해저드 적합 → 레버를 `do(X=x)`로 고정해 person-period 전방 시뮬 → 자연진화 대비 **ΔCIF**.
+- **교차 IPTW/MSM**: 과거이력 조건부 처치확률 역수(안정화 가중·positivity 점검) → 가중 위험차. g-formula와 가정 같고
+  모형의존 다름 → 일치 시 강건. **naive(비보정) 대조**로 교란 제거를 가시화.
+- **봉투/보고**: 점 아닌 범위(베이지안 신용구간), **E-value**, **레버 원장**(어느 행동을 얼마나 — 보수/기준/낙관).
+  **do(X)=잘 정의된 조작가능 개입** + consistency/SUTVA/**Goodhart 주석**.
 
-## 구조 (crm 정직성 규율 계승 + 확장)
+## 스코프 규율
+- **MVS(단독 완결작)**: Phase0 게이트 → 경쟁위험 생존 + KM/CIF + SHAP 드라이버 + gap-sweep + 시간외 검증 +
+  아하 플레이북 + **g-formula 임팩트(E-value 봉투)** + 정직한 한계 + 사전등록.
+- **Tier 2(계측)**: 시퀀스 임베딩 시변공변량 · IPTW/MSM 교차 · 마르코프 베이지안 밴드.
+- **Tier 3(인과 확장)**: 실제충격 DiD/ITS(있을 때만) · 유저-FE · IV · TMLE · 백테스트.
+
+## 구조 (이 repo 루트 = 프로젝트)
 ```
-~/Desktop/growth-activation-analysis/
-├── Makefile          # setup / features / aha / impact / figures / all / clean
-├── README.md         # 가상 사전과제 + 핵심결과 + figures + 정직한 한계
-├── requirements.txt  # numpy pandas pyarrow scikit-learn shap matplotlib pyyaml
-├── .gitignore        # .venv/ data/raw/ data/*.parquet __pycache__/
-├── config/config.yaml# Y정의·윈도우·임계격자·마르코프 상태·가정
-├── src/
-│   ├── data.py       # MerRec May N파일 캐시 로드 + 코호트/세션 구성 + validate()
-│   ├── features.py   # 유저×윈도우 행동피처 + Y라벨(전환/리텐션) 생성 → data/user_features.parquet
-│   ├── aha.py        # GBM+SHAP로 X선별 → (k,n)격자 P/R/F1/MCC/lift → 아하모먼트 확정 → docs/aha_report.md
-│   ├── impact.py     # 마르코프 전이행렬 + 아하 Δ 임팩트 시뮬 → docs/impact_report.md
-│   └── figures.py    # SHAP요약·아하 리프트곡선·코호트 리텐션·마르코프 임팩트 4종
-├── docs/
-│   ├── eda_findings.md / aha_report.md / impact_report.md (생성)
-│   ├── decisions.md / limitations.md (수기, D-1.. + 한계)
-│   └── figures/
-└── report/strategy_memo.md   # 전략 제안 + 실행 + AI 사용 분별
+Makefile · requirements.txt · config/config.yaml
+src/ data.py(Phase0) _synth.py(오프라인 fixture) personperiod.py survival.py drivers.py impact.py figures.py
+tests/test_smoke.py(합성 ground-truth 복원 검증) · docs/(생성 리포트+figures, 수기 decisions/limitations) · report/strategy_memo.md
 ```
 
-## 정직성 규율 (crm 계승)
-- **관측 데이터 → 인과 아님**: 아하 모먼트는 *예측적 연관*이지 증명된 인과 아님 → "A/B로 검증할 가설"로 명시(crm은 무작위배정으로 인과를 다뤘다는 대비).
-- **선택/생존 편향**: 활동 로그에 남은 유저만 관측.
-- **짧은 horizon**(1개월 샘플) → 리텐션은 수주 범위로 한정. 마르코프 무기억성 가정 명시.
-- 가정(윈도우·임계·상태정의)은 config 분리 + 민감도. 단일 답 회피.
+## 정직성/식별 규율
+- 관측→인과: g-계산도 가정에 기댐 → **E-value로 가정 강건성 봉투**, 식별 위조 금지.
+- 편향 노출: 좌측절단(지연진입)·우검열·선택·**정보적 검열**(경쟁위험)·생존. 짧은 horizon(1개월): 리텐션=수주, 무기억성 한계.
+- 모든 가정(buffer·W·G·N·n·k·레버) config 분리 + 민감도. 면접 방어 장전: Schoenfeld·positivity·E-value.
 
-## 기존 vault 정리 (이전 시도 폐기)
-- vault `marketplace-seller-entry-analysis/`(Olist) **삭제**.
-- `crm-uplift-analysis/README.md`의 `../marketplace-seller-entry-analysis` 형제 링크를 **평문**으로 되돌림(독립 방침).
-- 위키 `crm-uplift-analysis-wiki/log.md`에 폐기/전환 기록 append.
+## 실행 리스크 & 안전장치
+- **여기서 멈춘다**: 방법론 수렴. 더 얹으면 구현·가정·서사 희석으로 net 마이너스. 남은 일=실행+스코핑+Phase0 EDA.
+- **MVS는 인과 성공에 의존하지 않음**: 보장 산출물=생존 서술+누수통제+시간외 검증. g-formula는 best-effort,
+  **positivity 실패 시 연관+E-value로 자동 강등**. DiD/IV는 MerRec엔 없을 가능성 높음 → 없으면 생략.
+- **정확성 백스톱**: 합성 fixture에 **알려진 ground-truth 효과**를 심어 g-formula/IPTW가 복원하는지 검증
+  (`tests/test_smoke.py` — naive>g-formula>0, IPTW 일치, E-value>1). HF 네트워크 차단·shap/lifelines 미설치에도 무관히 동작.
 
 ## 검증 (end-to-end)
-1. `make setup` → venv(shap 포함).
-2. `make all` → features → aha → impact → figures 무오류, 산출물 생성.
-3. 콘솔==docs 재현성, README figure 링크 점검.
-4. SHAP·마르코프 수치 sanity(전이행렬 행합=1 등).
-5. (승인 시) git init + 첫 커밋.
+1. `make setup` → `make test`(합성 fixture, 네트워크 불요, ground-truth 복원).
+2. (네트워크 허용) `make eda`(Phase0 게이트) → `make all` → docs 리포트 + 6 figures.
+3. Sanity: CIF∈[0,1]·단조, 해저드∈[0,1], 전이행렬 행합=1·`(I−Q)` 가역, IPTW positivity, gap 곡선 plateau, E-value 계산.
