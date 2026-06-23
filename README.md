@@ -37,7 +37,10 @@ RR=1.65 → **E-value=2.68** (이 효과를 설명해 없애려면 미관측 교
 ```bash
 make setup     # 의존성 (shap·lifelines는 선택, 없어도 동작)
 make test      # 오프라인 합성 fixture로 전 파이프라인 + ground-truth 복원 검증 (네트워크 불요)
-make all       # eda(Phase0) → drivers → impact → figures  (실데이터는 config data.source=merrec)
+make all       # eda(Phase0) → drivers → impact → figures
 ```
+**로컬 MerRec로 실행**: `config/config.yaml`에서 `data.source: merrec` + `data.local_dir: /경로/merrec폴더`
+(해당 폴더의 `*.parquet`를 다운로드 없이 읽음) → `make eda`로 Phase-0 게이트 통과 확인 후 `make all`.
+이벤트 타입 컬럼명이 다르면 `data.event_col_candidates`에 추가.
 > 재현성 백스톱: `tests/test_smoke.py`는 합성 데이터에 **알려진 인과효과를 심어** g-formula/IPTW가 그걸
 > 복원하는지(naive > g-formula > 0, IPTW 일치, E-value>1) 검증한다.

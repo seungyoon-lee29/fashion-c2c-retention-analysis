@@ -5,10 +5,12 @@ seed: 17
 
 data:
   source: synthetic          # synthetic | merrec  (HF is network-gated; synthetic always runs)
+  local_dir: ""              # if set, read *.parquet from here (your local MerRec) — no download
   merrec_date: "20230501"
   merrec_n_files: 5          # ~350MB, ~35k users when source=merrec
   synthetic_n_users: 4000
   cache_dir: data/raw
+  event_col_candidates: [event, name, event_type, action]   # real MerRec event-type column
   columns: [user_id, stime, session_id, event_id, item_id, c0_name, c1_name, brand_name, price, event]
 
 # Time axis (the root of leakage + truncation control). Units = days.

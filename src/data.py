@@ -27,18 +27,37 @@ def load_events(cfg: dict) -> pd.DataFrame:
 
 
 def _load_merrec(cfg: dict) -> pd.DataFrame:
-    """Best-effort cached download of N MerRec files for one date partition.
+    """Load MerRec from a local directory if `data.local_dir` is set, else cached HF download.
 
-    Raises a clear error (rather than hanging) when the HF host is blocked, so
-    the caller can fall back to synthetic.
+    Local path is preferred: point `data.local_dir` at the folder holding your MerRec
+    `*.parquet` files (e.g. one date partition) and the same pipeline runs with no network.
     """
+    import glob
+
+    n_files = int(cfg["data"]["merrec_n_files"])
+    cols = cfg["data"]["columns"]
+    local_dir = cfg["data"].get("local_dir") or ""
+
+    if local_dir:
+        files = sorted(glob.glob(str(Path(local_dir) / "**" / "*.parquet"), recursive=True))
+        if not files:
+            raise RuntimeError(f"no .parquet files under data.local_dir={local_dir!r}")
+        frames = [pd.read_parquet(f) for f in files[:n_files]]
+    else:
+        frames = _download_merrec(cfg, n_files)
+
+    out = pd.concat(frames, ignore_index=True)
+    out = _normalise_event_col(out, cfg)
+    keep = [c for c in cols if c in out.columns]
+    return out[keep] if keep else out
+
+
+def _download_merrec(cfg: dict, n_files: int) -> list:
     import urllib.request
 
     date = cfg["data"]["merrec_date"]
-    n_files = int(cfg["data"]["merrec_n_files"])
     cache = Path(cfg["data"]["cache_dir"]); cache.mkdir(parents=True, exist_ok=True)
     base = f"https://huggingface.co/datasets/mercari-us/merrec/resolve/main/{date}"
-    cols = cfg["data"]["columns"]
     frames = []
     for i in range(n_files):
         fname = f"{i:012d}.parquet"
@@ -50,15 +69,19 @@ def _load_merrec(cfg: dict) -> pd.DataFrame:
             except Exception as e:  # network-gated environments
                 raise RuntimeError(
                     f"MerRec download failed ({e}). HF is likely network-gated here; "
-                    "set data.source=synthetic in config.yaml."
+                    "set data.local_dir to your local MerRec folder, or data.source=synthetic."
                 ) from e
-        df = pd.read_parquet(local)
-        keep = [c for c in cols if c in df.columns]
-        frames.append(df[keep])
-    out = pd.concat(frames, ignore_index=True)
-    if "event" not in out.columns and "name" in out.columns:
-        out = out.rename(columns={"name": "event"})
-    return out
+        frames.append(pd.read_parquet(local))
+    return frames
+
+
+def _normalise_event_col(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    if "event" in df.columns:
+        return df
+    for cand in cfg["data"].get("event_col_candidates", []):
+        if cand in df.columns:
+            return df.rename(columns={cand: "event"})
+    return df
 
 
 def build_cohort(events: pd.DataFrame, cfg: dict) -> pd.DataFrame:
