@@ -116,13 +116,14 @@ def aha_grid(events, cohort, pp, cfg) -> pd.DataFrame:
     return pd.DataFrame(recs)
 
 
-def run(cfg: dict, events, cohort) -> dict:
+def run(cfg: dict, events, cohort, write: bool = True) -> dict:
     feats = early_features(events, cohort, cfg)
     pp = build_person_period(events, cohort, feats, cfg)
     imp = importance(pp, cfg)
     sweep = gap_sweep(events, cohort, cfg)
     aha = aha_grid(events, cohort, pp, cfg)
-    _write_report(imp, sweep, aha, cfg)
+    if write:  # off for tests/synthetic so they don't clobber the committed real-data report
+        _write_report(imp, sweep, aha, cfg)
     return {"importance": imp, "gap_sweep": sweep, "aha": aha, "pp": pp, "feats": feats}
 
 

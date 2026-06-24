@@ -97,7 +97,7 @@ def markov_absorbing(pp: pd.DataFrame, cfg: dict) -> dict:
             "row_sum_check": float((counts / counts.sum()).sum())}
 
 
-def run(cfg: dict, events, cohort, feats=None, pp=None) -> dict:
+def run(cfg: dict, events, cohort, feats=None, pp=None, write: bool = True) -> dict:
     if feats is None:
         feats = early_features(events, cohort, cfg)
     if pp is None:
@@ -144,7 +144,8 @@ def run(cfg: dict, events, cohort, feats=None, pp=None) -> dict:
         "iptw": iptw, "risk_ratio": rr, "e_value": ev,
         "markov": mk, "ledger": ledger, "diagnosis": diagnosis, "oot": oot,
     }
-    _write_report(res, cfg)
+    if write:  # off for tests/synthetic so they don't clobber the committed real-data report
+        _write_report(res, cfg)
     return res
 
 

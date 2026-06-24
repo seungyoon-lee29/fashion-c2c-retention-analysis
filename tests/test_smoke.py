@@ -37,7 +37,7 @@ def test_pipeline_and_ground_truth():
     assert m["conversion_rate"] > 0
 
     cohort = build_cohort(events, cfg)
-    dr = drivers_run(cfg, events, cohort)
+    dr = drivers_run(cfg, events, cohort, write=False)  # don't clobber committed real-data report
     pp = dr["pp"]
     assert not pp.empty
     assert set(pp["event"].unique()).issubset({0, 1, 2})
@@ -54,7 +54,7 @@ def test_pipeline_and_ground_truth():
     assert np.all(np.diff(c["cif_retain"]) >= -1e-9)
 
     # Markov sanity: row sums to 1, finite per-1000
-    res = impact_run(cfg, events, cohort, feats=dr["feats"], pp=pp)
+    res = impact_run(cfg, events, cohort, feats=dr["feats"], pp=pp, write=False)
     assert abs(res["markov"]["row_sum_check"] - 1.0) < 1e-6
     assert np.isfinite(res["markov"]["per1000_point"])
 

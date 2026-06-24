@@ -1,7 +1,7 @@
 PY ?= python3
 SRC = src
 
-.PHONY: setup eda features survival drivers impact figures all test clean
+.PHONY: setup eda features survival drivers impact figures all test report clean
 
 setup:
 	$(PY) -m pip install -r requirements.txt
@@ -19,6 +19,9 @@ figures:        ## all report figures
 	cd $(SRC) && $(PY) figures.py
 
 all: eda drivers impact figures   ## full pipeline -> docs/ + figures
+
+report:         ## self-contained portfolio one-pager (report.html, figures embedded)
+	cd $(SRC) && $(PY) report_html.py
 
 test:           ## offline smoke + ground-truth recovery (no network)
 	$(PY) tests/test_smoke.py
