@@ -17,13 +17,14 @@
 
 - expected retentions per 1000 (eventual): **480** [90% CI 464–499]  (row-sum check=1.000)
 
+## Identification diagnosis (g-formula vs IPTW)
+
+- **AGREE**: g-formula and IPTW within thresholds (abs diff 2.3pp).
+
 ## Lever ledger (per 1000 new-observed users)
 
 - conservative: 420
 - base: 538
 - optimistic: 657
-
-## Disagreement protocol
-- g-formula vs IPTW rel-diff=9.8% → agree within threshold
 
 > Honesty: g-formula identification rests on sequential exchangeability + positivity + consistency. These are assumptions, not facts — the E-value bounds their fragility. No randomised experiment is present in MerRec, so this is a defensible *conditional* estimate, not proof of causation.

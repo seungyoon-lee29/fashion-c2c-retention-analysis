@@ -12,7 +12,8 @@
 부적합한 횡단면 보정 — 을 제거하고 아래로 수렴했다.
 
 ## 확정 설계 (락)
-- **스파인 = 이산시간 경쟁위험 생존**(person-period 해저드). KM/CIF·Cox는 서술·강건성 동반자.
+- **스파인 = 이산시간 경쟁위험 생존**(person-period 해저드). KM/CIF가 서술 동반자. (이산시간 유연 해저드가
+  비례위험을 *완화*하므로 Cox/Schoenfeld는 미채택 — PH를 가정하지 않는 스파인엔 덜 유연한 중복 모델.)
 - **3층 구조**: 스파인(생존=정체성·단독 방어) · 계측층(시퀀스/next-action 임베딩을 *시변공변량*으로, Tier 2) ·
   운영층(아하 임계·마르코프를 *운영 규칙/플레이북*으로 강등).
 - **임팩트 = 스파인 재사용 g-computation**: g-formula(주력) + IPTW/MSM(교차, 모형의존 다름) + (여유 시 TMLE).
@@ -33,9 +34,10 @@
 ## 방법론 (MVS 스파인)
 1. **시간축·코호트**: t0=첫 관측("신규-관측 코호트", 좌측절단→생존 **지연진입**). 절단 완화 `t0≥data_start+buffer`.
    `[t0,t0+W)` 피처 → `[t0+W,t0+W+G)` embargo → `[t0+W+G,+H)` 결과. 아하 윈도우 `n≤W`.
-2. **스파인 — 이산시간 경쟁위험 생존**: person-period(유저×스텝), 스텝별 경쟁 결과 0=지속/1=전환/2=이탈.
+2. **스파인 — 이산시간 경쟁위험 생존**: person-period(유저×스텝), 스텝별 경쟁 결과 0=지속/1=재방문(retain)/2=이탈.
+   (Phase-0에서 첫 구매가 즉시적임을 확인 → 결과를 리텐션=재방문으로 확정. `decisions.md` A-1.)
    해저드=풀드 로지스틱(베이스)+**GBM 해저드**(유연)+확률보정. 공변량=시불변 초기행동 + (Tier2)시변 임베딩 — **과거 정보만**.
-   동반자=**KM/Aalen-Johansen CIF** · Cox+**Schoenfeld** · **시간외(out-of-time) 검증**(신뢰 핵심).
+   동반자=**KM/Aalen-Johansen CIF** · **시간외(out-of-time) 검증**(신뢰 핵심).
    구조적 정직성: 경쟁위험(정보적 검열 해결)·지연진입(좌측절단)·past-only·embargo(반사성).
 3. **드라이버 + 누수 통제**: 해저드에 **SHAP/순열 중요도** → 초기 행동 선별. **gap sweep**(0→7일) holdout 곡선의
    **plateau**=누수 제거 성능, gap별 중요도 안정성으로 누수 아티팩트 제거.
@@ -65,14 +67,14 @@ tests/test_smoke.py(합성 ground-truth 복원 검증) · docs/(생성 리포트
 ## 정직성/식별 규율
 - 관측→인과: g-계산도 가정에 기댐 → **E-value로 가정 강건성 봉투**, 식별 위조 금지.
 - 편향 노출: 좌측절단(지연진입)·우검열·선택·**정보적 검열**(경쟁위험)·생존. 짧은 horizon(1개월): 리텐션=수주, 무기억성 한계.
-- 모든 가정(buffer·W·G·N·n·k·레버) config 분리 + 민감도. 면접 방어 장전: Schoenfeld·positivity·E-value.
+- 모든 가정(buffer·W·G·N·n·k·레버) config 분리 + 민감도. 면접 방어 장전: positivity·E-value·시간외 검증.
 
 ## 실행 리스크 & 안전장치
 - **여기서 멈춘다**: 방법론 수렴. 더 얹으면 구현·가정·서사 희석으로 net 마이너스. 남은 일=실행+스코핑+Phase0 EDA.
 - **MVS는 인과 성공에 의존하지 않음**: 보장 산출물=생존 서술+누수통제+시간외 검증. g-formula는 best-effort,
   **positivity 실패 시 연관+E-value로 자동 강등**. DiD/IV는 MerRec엔 없을 가능성 높음 → 없으면 생략.
 - **정확성 백스톱**: 합성 fixture에 **알려진 ground-truth 효과**를 심어 g-formula/IPTW가 복원하는지 검증
-  (`tests/test_smoke.py` — naive>g-formula>0, IPTW 일치, E-value>1). HF 네트워크 차단·shap/lifelines 미설치에도 무관히 동작.
+  (`tests/test_smoke.py` — naive>g-formula>0, IPTW 일치, E-value>1). HF 네트워크 차단·shap 미설치에도 무관히 동작.
 
 ## 검증 (end-to-end)
 1. `make setup` → `make test`(합성 fixture, 네트워크 불요, ground-truth 복원).

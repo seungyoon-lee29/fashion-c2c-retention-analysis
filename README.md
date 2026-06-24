@@ -31,7 +31,8 @@ ground-truth 테스트 백스톱.
 | **g-formula (표준화)** | **−0.012** | 인게이지먼트 보정 시 효과 **소멸** |
 | IPTW/MSM (교차) | +0.027 | 작은 양수 — g-formula와 **326% 발산** |
 
-RR=0.97 → **E-value=1.23**. g-formula vs IPTW 발산 > 사전등록 임계(30%) → **불일치 프로토콜 발동**(평균 금지, 가정 진단).
+RR=0.97 → **E-value=1.23**. 두 인과 추정기 모두 0의 ±3pp 안(절대차 3.9pp) → **효과 null·부호 미식별**. 326% 상대차는
+null-스케일 착시(분모≈0)이지 진짜 발산이 아니며, 진단 프로토콜이 **절대차 가드**로 이를 구분한다. 양의 식별 효과가 없어 **레버 원장은 생략**.
 **결론: 카트는 리텐션 레버가 아니라 이미 인게이지된 유저의 *마커*다 — 큰 연관(+15pp)이 인과 보정에서 ~0으로 붕괴한 허영지표 사례.**
 
 검증이 헛돌지 않음: retain-hazard **시간외 PR-AUC=0.184**(base 0.080의 2배 이상), embargo gap sweep PR-AUC ~0.19 plateau(누수 통제).
@@ -44,7 +45,7 @@ RR=0.97 → **E-value=1.23**. g-formula vs IPTW 발산 > 사전등록 임계(30%
 
 ## 실행
 ```bash
-make setup     # 의존성 (shap·lifelines는 선택, 없어도 동작)
+make setup     # 의존성 (shap은 선택, 없어도 permutation importance로 동작)
 make test      # 오프라인 합성 fixture로 전 파이프라인 + ground-truth 복원 검증 (네트워크 불요)
 make all       # eda(Phase0) → drivers → impact → figures
 ```

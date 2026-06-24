@@ -6,8 +6,8 @@ under the activation lever `aha_cart`):
   - g-formula  : standardisation via the cause-specific hazards [adjusts for features]
   - IPTW/MSM   : stabilised inverse-propensity weighting        [cross-check, different model]
 Plus: E-value (confounding robustness), a memoryless Markov approximation with a
-Dirichlet posterior band, a lever ledger (conservative/base/optimistic), and a
-pre-registered disagreement check between g-formula and IPTW.
+Dirichlet posterior band, a lever ledger (only for a positively-identified effect),
+and a null-aware identification diagnosis (g-formula vs IPTW: null / agree / diverge).
 """
 from __future__ import annotations
 
@@ -115,23 +115,34 @@ def run(cfg: dict, events, cohort, feats=None, pp=None) -> dict:
     ev = e_value(rr) if np.isfinite(rr) and rr > 0 else np.nan
     mk = markov_absorbing(pp, cfg)
 
-    # lever ledger scenarios on the anchored (g-formula) lever
-    base1000 = 1000 * cif0
-    ledger = {name: {"per1000": float(base1000 + 1000 * mult * g_delta)}
-              for name, mult in cfg["impact"]["lever_ledger"].items()}
-
-    # pre-registered disagreement check (g-formula vs IPTW)
+    # identification diagnosis (g-formula vs IPTW) — null-aware so a near-zero effect
+    # is not mislabelled "diverge" just because the relative metric has a tiny denominator.
+    band = float(cfg["impact"]["negligible_effect_pp"])
     thr = float(cfg["impact"]["disagreement_threshold_pct"]) / 100
-    diverge = None
-    if iptw.get("delta") is not None and np.isfinite(iptw["delta"]) and abs(g_delta) > 1e-6:
-        rel = abs(g_delta - iptw["delta"]) / abs(g_delta)
-        diverge = {"rel_diff": float(rel), "exceeds": bool(rel > thr)}
+    idl = iptw.get("delta")
+    both = idl is not None and np.isfinite(idl)
+    abs_diff = abs(g_delta - idl) if both else None
+    rel = abs(g_delta - idl) / abs(g_delta) if (both and abs(g_delta) > 1e-6) else None
+    max_abs = max(abs(g_delta), abs(idl)) if both else abs(g_delta)
+    verdict = ("null" if max_abs <= band
+               else "diverge" if (rel is not None and rel > thr and abs_diff > band)
+               else "agree")
+    diagnosis = {"verdict": verdict, "band": band, "max_abs_effect": float(max_abs),
+                 "abs_diff": float(abs_diff) if abs_diff is not None else None,
+                 "rel_diff": float(rel) if rel is not None else None}
+
+    # lever ledger only projects a POSITIVELY identified effect (else conservative/optimistic invert)
+    ledger = None
+    if verdict != "null" and g_delta > band:
+        base1000 = 1000 * cif0
+        ledger = {name: {"per1000": float(base1000 + 1000 * mult * g_delta)}
+                  for name, mult in cfg["impact"]["lever_ledger"].items()}
 
     res = {
         "cif_lever1": cif1, "cif_lever0": cif0, "gformula_delta": g_delta,
         "naive_delta": nd, "naive_r1": nr1, "naive_r0": nr0,
         "iptw": iptw, "risk_ratio": rr, "e_value": ev,
-        "markov": mk, "ledger": ledger, "disagreement": diverge, "oot": oot,
+        "markov": mk, "ledger": ledger, "diagnosis": diagnosis, "oot": oot,
     }
     _write_report(res, cfg)
     return res
@@ -165,13 +176,28 @@ def _write_report(r: dict, cfg: dict):
     mk = r["markov"]
     L.append(f"- expected retentions per 1000 (eventual): **{mk['per1000_point']:.0f}** "
              f"[90% CI {mk['per1000_lo']:.0f}–{mk['per1000_hi']:.0f}]  (row-sum check={mk['row_sum_check']:.3f})\n")
+    dg = r["diagnosis"]
+    L.append("## Identification diagnosis (g-formula vs IPTW)\n")
+    if dg["verdict"] == "null":
+        L.append(f"- **NULL effect**: both estimators within ±{dg['band']*100:.0f}pp of zero "
+                 f"(g-formula {r['gformula_delta']*100:+.1f}pp, IPTW {(r['iptw'].get('delta') or 0)*100:+.1f}pp; "
+                 f"abs diff {dg['abs_diff']*100:.1f}pp). The {dg['rel_diff']:.0%} relative gap is a null-scale "
+                 "artifact (tiny denominator), **not** a genuine divergence — the effect's sign is not identified. "
+                 "Practical read: the activation lever has no reliable retention effect.\n")
+    elif dg["verdict"] == "diverge":
+        L.append(f"- **DIVERGE**: rel-diff={dg['rel_diff']:.0%} and abs-diff={dg['abs_diff']*100:.1f}pp exceed thresholds "
+                 "→ diagnose which assumption binds (hazard-model misspecification vs propensity/positivity), do not average.\n")
+    else:
+        L.append(f"- **AGREE**: g-formula and IPTW within thresholds "
+                 f"(abs diff {dg['abs_diff']*100:.1f}pp).\n")
     L.append("## Lever ledger (per 1000 new-observed users)\n")
-    for name, d in r["ledger"].items():
-        L.append(f"- {name}: {d['per1000']:.0f}")
-    if r["disagreement"]:
-        dv = r["disagreement"]
-        L.append(f"\n## Disagreement protocol\n- g-formula vs IPTW rel-diff={dv['rel_diff']:.1%} "
-                 f"→ {'DIVERGE: diagnose which assumption binds' if dv['exceeds'] else 'agree within threshold'}")
+    if r["ledger"]:
+        for name, d in r["ledger"].items():
+            L.append(f"- {name}: {d['per1000']:.0f}")
+    else:
+        L.append("- _omitted: no positively-identified lever effect to project "
+                 "(g-formula Δ ≤ 0 / null). Projecting conservative/base/optimistic on a non-positive effect "
+                 "would invert the scenarios._")
     L.append("\n> Honesty: g-formula identification rests on sequential exchangeability + positivity + "
              "consistency. These are assumptions, not facts — the E-value bounds their fragility. "
              "No randomised experiment is present in MerRec, so this is a defensible *conditional* estimate, "

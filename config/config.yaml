@@ -53,6 +53,7 @@ impact:
   iptw:
     clip_quantile: 0.99      # stabilise extreme weights; check positivity
   disagreement_threshold_pct: 30   # pre-registered: legs diverging > this => diagnose, not average
+  negligible_effect_pp: 0.03       # |Δ| below this (both estimators) => effect is null; rel-divergence then uninformative, ledger omitted
 
 figures:
   dir: docs/figures
