@@ -26,21 +26,11 @@ def data_dir() -> Path:
     return d
 
 
-def docs_dir() -> Path:
-    d = ROOT / "docs"
-    d.mkdir(exist_ok=True)
-    return d
-
-
 def write_md(rel_path: str, text: str) -> Path:
     p = ROOT / rel_path
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text)
     return p
-
-
-def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(-x))
 
 
 def df_to_md(df) -> str:

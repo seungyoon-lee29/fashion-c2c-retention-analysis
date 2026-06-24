@@ -2,15 +2,17 @@
 
 Time axis per user:  [t0, t0+W) feature window | [t0+W, t0+W+G) embargo | [t0+W+G, +H) outcome.
 The person-period table has one row per (user, step) from delayed entry to event/censor,
-with competing outcomes per step: 0=continue (at risk), 1=convert, 2=lapse (absorbing).
-Covariates are measured strictly in the feature window (past-only -> no immortal-time/reflexivity).
+with competing outcomes per step: 0=continue (at risk), 1=retain (returned/active), 2=lapse (absorbing churn).
+The spine models RETENTION: in MerRec first purchase is immediate (median 0 days from first
+observation), so it is acquisition, not retention; the leakage-safe outcome window therefore
+models whether a user RETURNS after the embargo. Covariates are measured strictly in the
+feature window (past-only -> no immortal-time/reflexivity).
 """
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
-CONTINUE, CONVERT, LAPSE = 0, 1, 2
+CONTINUE, RETAIN, LAPSE = 0, 1, 2
 FEATURE_COLS = ["n_view", "n_like", "n_cart", "n_offer", "n_session",
                 "cat_diversity", "brand_diversity", "active_days"]
 # Confounder/adjustment set EXCLUDES n_cart: the lever `aha_cart` already encodes the
@@ -20,8 +22,7 @@ FEATURE_COLS = ["n_view", "n_like", "n_cart", "n_offer", "n_session",
 CONFOUNDER_COLS = [c for c in FEATURE_COLS if c != "n_cart"]
 
 
-def early_features(events: pd.DataFrame, cohort: pd.DataFrame, cfg: dict,
-                   gap_override: int | None = None) -> pd.DataFrame:
+def early_features(events: pd.DataFrame, cohort: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """Time-fixed behaviour in [t0, t0+W). `aha_cart` is the lever under study."""
     W = int(cfg["windows"]["feature_window_W"])
     ev = events.copy()
@@ -59,7 +60,6 @@ def build_person_period(events: pd.DataFrame, cohort: pd.DataFrame,
     H = int(cfg["windows"]["horizon_H"])
     step = int(cfg["person_period"]["step_days"])
     lapse_days = int(cfg["person_period"]["lapse_inactive_days"])
-    conv_ev = cfg["events"]["conversion"]
 
     ev = events.copy()
     ev["stime"] = pd.to_datetime(ev["stime"])
@@ -68,7 +68,6 @@ def build_person_period(events: pd.DataFrame, cohort: pd.DataFrame,
     span = int(ev["day"].max()) + 1
 
     acts = ev.groupby("user_id")["day"].apply(lambda s: set(s.tolist()))
-    conv = (ev[ev["event"] == conv_ev].groupby("user_id")["day"].min())
     t0 = cohort.set_index("user_id")
     fidx = feats.set_index("user_id")
 
@@ -80,18 +79,17 @@ def build_person_period(events: pd.DataFrame, cohort: pd.DataFrame,
             continue
         win_end = min(span - 1, entry + H - 1)
         uacts = acts.get(uid, set())
-        conv_day = conv.get(uid, np.nan)
-        # find event day within [entry, win_end]
+        # lapse clock starts from the user's last activity before the outcome window
+        pre = [d for d in uacts if d < entry]
+        last_active = max(pre) if pre else entry - 1
+        # competing risks in [entry, win_end]: first return = RETAIN, inactivity gap = LAPSE
         event_day, event_code = None, CONTINUE
-        last_active = entry
         for d in range(entry, win_end + 1):
-            if not np.isnan(conv_day) and d == conv_day and entry <= conv_day <= win_end:
-                event_day, event_code = d, CONVERT
-                break
             if d in uacts:
-                last_active = d
-            elif d - last_active >= lapse_days:
-                event_day, event_code = d, LAPSE
+                event_day, event_code = d, RETAIN     # returned/active post-embargo
+                break
+            if d - last_active >= lapse_days:
+                event_day, event_code = d, LAPSE      # churned (absorbing)
                 break
         if event_day is None:
             event_day, event_code = win_end, CONTINUE  # right-censored

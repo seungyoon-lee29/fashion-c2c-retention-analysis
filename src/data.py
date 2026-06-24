@@ -8,12 +8,10 @@ downstream stage is identical on synthetic and real data.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
-from _util import data_dir, load_config, rng_from
+from _util import ROOT, data_dir, load_config, rng_from
 
 
 def load_events(cfg: dict) -> pd.DataFrame:
@@ -39,7 +37,7 @@ def _load_merrec(cfg: dict) -> pd.DataFrame:
     local_dir = cfg["data"].get("local_dir") or ""
 
     if local_dir:
-        files = sorted(glob.glob(str(Path(local_dir) / "**" / "*.parquet"), recursive=True))
+        files = sorted(glob.glob(str(ROOT / local_dir / "**" / "*.parquet"), recursive=True))
         if not files:
             raise RuntimeError(f"no .parquet files under data.local_dir={local_dir!r}")
         frames = [pd.read_parquet(f) for f in files[:n_files]]
@@ -56,7 +54,7 @@ def _download_merrec(cfg: dict, n_files: int) -> list:
     import urllib.request
 
     date = cfg["data"]["merrec_date"]
-    cache = Path(cfg["data"]["cache_dir"]); cache.mkdir(parents=True, exist_ok=True)
+    cache = ROOT / cfg["data"]["cache_dir"]; cache.mkdir(parents=True, exist_ok=True)
     base = f"https://huggingface.co/datasets/mercari-us/merrec/resolve/main/{date}"
     frames = []
     for i in range(n_files):
@@ -91,7 +89,7 @@ def build_cohort(events: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     ev["stime"] = pd.to_datetime(ev["stime"])
     data_start = ev["stime"].min().normalize()
     g = ev.groupby("user_id")["stime"]
-    cohort = pd.DataFrame({"t0": g.min(), "t_last": g.max(), "n_events": g.size()})
+    cohort = pd.DataFrame({"t0": g.min()})
     cohort["t0_day"] = (cohort["t0"].dt.normalize() - data_start).dt.days
     buf = int(w["truncation_buffer_days"])
     cohort["kept"] = cohort["t0_day"] >= buf  # mitigate left truncation

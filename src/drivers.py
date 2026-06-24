@@ -1,6 +1,6 @@
 """Driver discovery + leakage control + aha-moment operational playbook.
 
-- Importance of early behaviours on the conversion hazard (SHAP if available, else
+- Importance of early behaviours on the retention (return) hazard (SHAP if available, else
   permutation importance — model-agnostic, always runs).
 - Embargo gap sweep: rebuild labels at gaps 0..7 and watch holdout PR-AUC fall to a
   plateau = the leakage-controlled "true" performance.
@@ -16,14 +16,14 @@ from sklearn.metrics import (average_precision_score, f1_score,
                              matthews_corrcoef, precision_score, recall_score)
 
 from _util import df_to_md, load_config, write_md
-from personperiod import CONVERT, FEATURE_COLS, build_person_period, early_features
+from personperiod import RETAIN, FEATURE_COLS, build_person_period, early_features
 from survival import DESIGN_COLS, fit_cause_specific, predict_hazards
 
 
 def importance(pp: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     bundle = fit_cause_specific(pp, cfg)
     X = pp[DESIGN_COLS]
-    y = (pp["event"].to_numpy() == CONVERT).astype(int)
+    y = (pp["event"].to_numpy() == RETAIN).astype(int)
     try:
         import shap  # optional
         expl = shap.Explainer(lambda d: predict_hazards(bundle, pd.DataFrame(d, columns=DESIGN_COLS))[0],
@@ -59,30 +59,30 @@ def gap_sweep(events, cohort, cfg) -> pd.DataFrame:
     for g in cfg["windows"]["gap_sweep"]:
         feats = early_features(events, cohort, cfg)
         pp = build_person_period(events, cohort, feats, cfg, gap_override=int(g))
-        if pp.empty or (pp["event"] == CONVERT).sum() < 10:
+        if pp.empty or (pp["event"] == RETAIN).sum() < 10:
             recs.append({"gap": g, "holdout_pr_auc": np.nan, "n_rows": len(pp)})
             continue
         early = pp[pp["user_id"].map(t0) <= cut]
         late = pp[pp["user_id"].map(t0) > cut]
-        if (early["event"] == CONVERT).sum() < 5 or (late["event"] == CONVERT).sum() < 3:
+        if (early["event"] == RETAIN).sum() < 5 or (late["event"] == RETAIN).sum() < 3:
             recs.append({"gap": g, "holdout_pr_auc": np.nan, "n_rows": len(pp)})
             continue
         bundle = fit_cause_specific(early, cfg)
         hc, _ = predict_hazards(bundle, late)
-        y = (late["event"].to_numpy() == CONVERT).astype(int)
+        y = (late["event"].to_numpy() == RETAIN).astype(int)
         recs.append({"gap": g, "holdout_pr_auc": float(average_precision_score(y, hc)),
                      "n_rows": len(pp), "base_rate": float(y.mean())})
     return pd.DataFrame(recs)
 
 
-def user_conversion_label(pp: pd.DataFrame) -> pd.Series:
-    return pp.groupby("user_id")["event"].apply(lambda s: int((s == CONVERT).any()))
+def user_retention_label(pp: pd.DataFrame) -> pd.Series:
+    return pp.groupby("user_id")["event"].apply(lambda s: int((s == RETAIN).any()))
 
 
 def aha_grid(events, cohort, pp, cfg) -> pd.DataFrame:
     """Grid over k and window n (n<=W) for the cart lever, scored on temporal holdout."""
     W = int(cfg["windows"]["feature_window_W"])
-    label = user_conversion_label(pp)
+    label = user_retention_label(pp)
     t0 = cohort.set_index("user_id")["t0_day"]
     cut = t0.median()
     ev = events.copy()
@@ -128,7 +128,7 @@ def run(cfg: dict, events, cohort) -> dict:
 
 def _write_report(imp, sweep, aha, cfg):
     lines = ["# Drivers, leakage control & aha playbook\n"]
-    lines.append(f"## Driver importance (conversion hazard) — method: {imp.attrs.get('method','?')}\n")
+    lines.append(f"## Driver importance (retention hazard) — method: {imp.attrs.get('method','?')}\n")
     lines.append(df_to_md(imp.round(4)))
     lines.append("\n## Embargo gap sweep (holdout PR-AUC -> plateau = leakage-controlled)\n")
     lines.append(df_to_md(sweep.round(4)))

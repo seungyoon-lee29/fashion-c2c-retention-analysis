@@ -1,6 +1,6 @@
 """Offline smoke + correctness test. Runs the full pipeline on synthetic data and
 checks sanity invariants AND that the impact estimators recover the planted causal
-effect (g-formula/IPTW < naive, all positive). No network required.
+effect on RETENTION (g-formula/IPTW < naive, all positive). No network required.
 
 Run:  python -m pytest tests/ -q     or     python tests/test_smoke.py
 """
@@ -50,18 +50,18 @@ def test_pipeline_and_ground_truth():
 
     # CIF monotone non-decreasing and within [0,1]
     c = empirical_cif(pp)
-    assert c["cif_convert"].min() >= 0 and c["cif_convert"].max() <= 1
-    assert np.all(np.diff(c["cif_convert"]) >= -1e-9)
+    assert c["cif_retain"].min() >= 0 and c["cif_retain"].max() <= 1
+    assert np.all(np.diff(c["cif_retain"]) >= -1e-9)
 
     # Markov sanity: row sums to 1, finite per-1000
     res = impact_run(cfg, events, cohort, feats=dr["feats"], pp=pp)
     assert abs(res["markov"]["row_sum_check"] - 1.0) < 1e-6
     assert np.isfinite(res["markov"]["per1000_point"])
 
-    # GROUND-TRUTH backstop: planted effect is positive; confounding inflates naive,
+    # GROUND-TRUTH backstop: planted retention effect is positive; confounding inflates naive,
     # so the adjusted (g-formula) estimate should be positive but below the naive one,
     # and the independent IPTW estimate should agree with g-formula.
-    assert res["naive_delta"] > 0, "planted lever should associate with conversion"
+    assert res["naive_delta"] > 0, "planted lever should associate with retention"
     assert res["gformula_delta"] > 0, "adjusted effect should remain positive"
     assert res["gformula_delta"] < res["naive_delta"] + 0.01, \
         "adjustment should pull the confounded naive estimate down, not inflate it"

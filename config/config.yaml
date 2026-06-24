@@ -4,14 +4,15 @@
 seed: 17
 
 data:
-  source: synthetic          # synthetic | merrec  (HF is network-gated; synthetic always runs)
+  source: merrec             # synthetic | merrec  (synthetic = offline ground-truth backstop for tests)
   local_dir: ""              # if set, read *.parquet from here (your local MerRec) — no download
   merrec_date: "20230501"
   merrec_n_files: 5          # ~350MB, ~35k users when source=merrec
   synthetic_n_users: 4000
   cache_dir: data/raw
-  event_col_candidates: [event, name, event_type, action]   # real MerRec event-type column
-  columns: [user_id, stime, session_id, event_id, item_id, c0_name, c1_name, brand_name, price, event]
+  # MerRec stores the event-type string in `event_id` (NOT `name`, which is the product title).
+  event_col_candidates: [event_id, event, event_type, action]
+  columns: [user_id, stime, session_id, item_id, c0_name, c1_name, brand_name, price, event]
 
 # Time axis (the root of leakage + truncation control). Units = days.
 windows:
@@ -27,6 +28,9 @@ person_period:
   step_days: 1               # 1 | 2 | 3 ; widen if daily rows too sparse
   lapse_inactive_days: 7     # churn = N consecutive inactive days (absorbing)
 
+# Spine outcome = RETENTION: a user returns for activity in the outcome window (first purchase
+# in MerRec is immediate → acquisition, not retention). Churn (lapse) = `lapse_inactive_days`
+# of no activity. `conversion: buy_comp` is kept only for the Phase-0 funnel feasibility gate.
 events:
   conversion: buy_comp
   near_purchase: [buy_start, offer_make]   # flagged, NOT deleted (kept if pre-embargo)
@@ -38,8 +42,6 @@ aha_grid:
 hazard:
   model: gbm                 # logistic | gbm
   calibrate: true
-  test_size: 0.3
-  split: temporal            # temporal (out-of-time) | random
 
 impact:
   n_sims: 1000               # Monte Carlo over Dirichlet posteriors

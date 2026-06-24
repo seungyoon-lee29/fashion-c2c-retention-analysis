@@ -18,25 +18,25 @@ def _outdir(cfg) -> Path:
     return d
 
 
-def fig_cif(pp, cfg, out: Path, dpi):
+def fig_cif(pp, out: Path, dpi):
     c = empirical_cif(pp)
     plt.figure(figsize=(6, 4))
-    plt.plot(c["t"], c["cif_convert"], label="convert", color="#2a7")
-    plt.plot(c["t"], c["cif_lapse"], label="lapse", color="#c44")
+    plt.plot(c["t"], c["cif_retain"], label="retain (return)", color="#2a7")
+    plt.plot(c["t"], c["cif_lapse"], label="lapse (churn)", color="#c44")
     plt.xlabel("step (since delayed entry)"); plt.ylabel("cumulative incidence")
-    plt.title("Competing-risks CIF"); plt.legend(); plt.tight_layout()
+    plt.title("Competing-risks CIF: retention vs churn"); plt.legend(); plt.tight_layout()
     plt.savefig(out / "cif_competing_risks.png", dpi=dpi); plt.close()
 
 
-def fig_cif_by_aha(pp, cfg, out: Path, dpi):
+def fig_cif_by_aha(pp, out: Path, dpi):
     plt.figure(figsize=(6, 4))
     for x, col in [(1, "#2a7"), (0, "#888")]:
         sub = pp[pp["aha_cart"] == x]
         if sub.empty:
             continue
         c = empirical_cif(sub)
-        plt.plot(c["t"], c["cif_convert"], color=col, label=f"aha_cart={x}")
-    plt.xlabel("step"); plt.ylabel("CIF convert"); plt.title("Conversion CIF by activation")
+        plt.plot(c["t"], c["cif_retain"], color=col, label=f"aha_cart={x}")
+    plt.xlabel("step"); plt.ylabel("CIF retain"); plt.title("Retention CIF by activation")
     plt.legend(); plt.tight_layout(); plt.savefig(out / "cif_by_aha.png", dpi=dpi); plt.close()
 
 
@@ -51,7 +51,7 @@ def fig_gap(sweep, out: Path, dpi):
 def fig_importance(imp, out: Path, dpi):
     plt.figure(figsize=(6, 4))
     plt.barh(imp["feature"][::-1], imp["importance"][::-1], color="#759")
-    plt.xlabel(f"importance ({imp.attrs.get('method','?')})"); plt.title("Conversion drivers")
+    plt.xlabel(f"importance ({imp.attrs.get('method','?')})"); plt.title("Retention drivers")
     plt.tight_layout(); plt.savefig(out / "drivers_importance.png", dpi=dpi); plt.close()
 
 
@@ -62,7 +62,7 @@ def fig_impact(res, out: Path, dpi):
         res["iptw"].get("delta", np.nan)]
     colors = ["#c93", "#2a7", "#39c"]
     plt.bar(labels, vals, color=colors)
-    plt.ylabel("Δ conversion risk"); plt.axhline(0, color="k", lw=0.6)
+    plt.ylabel("Δ retention (return) prob"); plt.axhline(0, color="k", lw=0.6)
     plt.title("Lever impact: confounded vs adjusted"); plt.tight_layout()
     plt.savefig(out / "impact_estimators.png", dpi=dpi); plt.close()
 
@@ -73,7 +73,7 @@ def fig_markov(res, out: Path, dpi):
     plt.bar(["per 1000"], [mk["per1000_point"]], color="#593",
             yerr=[[mk["per1000_point"] - mk["per1000_lo"]], [mk["per1000_hi"] - mk["per1000_point"]]],
             capsize=6)
-    plt.ylabel("expected conversions / 1000"); plt.title("Markov approx (90% CI)")
+    plt.ylabel("expected retentions / 1000"); plt.title("Markov approx (90% CI)")
     plt.tight_layout(); plt.savefig(out / "markov_per1000.png", dpi=dpi); plt.close()
 
 
@@ -88,8 +88,8 @@ def main() -> int:
     cohort = build_cohort(events, cfg)
     dr = drivers_run(cfg, events, cohort)
     res = impact_run(cfg, events, cohort, feats=dr["feats"], pp=dr["pp"])
-    fig_cif(dr["pp"], cfg, out, dpi)
-    fig_cif_by_aha(dr["pp"], cfg, out, dpi)
+    fig_cif(dr["pp"], out, dpi)
+    fig_cif_by_aha(dr["pp"], out, dpi)
     fig_gap(dr["gap_sweep"], out, dpi)
     fig_importance(dr["importance"], out, dpi)
     fig_impact(res, out, dpi)

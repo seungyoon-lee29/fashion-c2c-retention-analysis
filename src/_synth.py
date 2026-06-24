@@ -9,11 +9,14 @@ it would on real MerRec.
 
 Planted structure (per user):
   a ~ Beta            latent affinity = CONFOUNDER
-  early_cart         depends on a (so cart correlates with conversion via a)
-  daily conversion hazard logit = BASE + CONF_BETA*a + GAMMA_TRUE*early_cart - DECAY*day
-The lever under study is `early_cart` (did the user hit the activation behavior
-in the first window). Adjusting for an `a`-proxy (early #views) should recover
-~GAMMA_TRUE; the unadjusted estimate should be larger (confounding).
+  early_cart         depends on a (so cart correlates with retention via a)
+  daily RETURN hazard logit = RET_BASE + CONF_BETA*a + GAMMA_TRUE*early_cart - DECAY*day
+The spine models RETENTION (does the user return for activity after the embargo). The lever
+under study is `early_cart` (did the user hit the activation behavior in the first window).
+Adjusting for an `a`-proxy (early #views) should recover ~GAMMA_TRUE; the unadjusted estimate
+should be larger (confounding). A small immediacy-driven immediate purchase (decoupled from
+the lever) keeps the buy_comp funnel present for the Phase-0 gate, mirroring real MerRec where
+first purchase is immediate.
 """
 from __future__ import annotations
 
@@ -21,11 +24,11 @@ import numpy as np
 import pandas as pd
 
 # Planted ground truth (read by tests).
-GAMMA_TRUE = 0.85         # causal log-odds of early_cart on daily conversion hazard
+GAMMA_TRUE = 0.85         # causal log-odds of early_cart on the daily RETURN (retention) hazard
 CONF_BETA = 1.1           # confounder (affinity) effect -> upward bias if unadjusted
-BASE = -6.0               # baseline daily conversion log-odds (=> realistic ~5-8% total)
+RET_BASE = -3.0           # baseline daily return log-odds (=> realistic ~50% retention)
 DECAY = 0.04              # mild within-window hazard decay
-LAPSE_LOGIT = -2.2        # baseline daily lapse hazard
+P_BUY_IMMEDIATE = 0.06    # immediate purchase prob (gate funnel; decoupled from the lever)
 
 BASE_DATE = pd.Timestamp("2023-05-01")
 _C0 = ["Women", "Men", "Electronics", "Home", "Toys"]
@@ -41,7 +44,6 @@ def generate_events(cfg: dict, rng: np.random.Generator | None = None) -> pd.Dat
     H = int(cfg["windows"]["horizon_H"])
     W = int(cfg["windows"]["feature_window_W"])
     G = int(cfg["windows"]["embargo_gap_G"])
-    lapse_days = int(cfg["person_period"]["lapse_inactive_days"])
 
     rows: list[dict] = []
     eid = 0
@@ -70,24 +72,20 @@ def generate_events(cfg: dict, rng: np.random.Generator | None = None) -> pd.Dat
             day = t0 + int(rng.integers(0, max(1, W)))
             rows.append(_ev(uid, day, "offer_make", rng, eid)); eid += 1
 
-        # ---- outcome window: daily competing risks (convert vs lapse) ----
-        last_active = t0 + W
-        converted = False
+        # ---- immediacy: a few users buy on their first observed day (gate funnel, lever-independent) ----
+        if rng.random() < P_BUY_IMMEDIATE:
+            rows.append(_ev(uid, t0, "buy_start", rng, eid)); eid += 1
+            rows.append(_ev(uid, t0, "buy_comp", rng, eid)); eid += 1
+
+        # ---- outcome window: daily RETURN hazard (planted retention effect) ----
+        # The pipeline re-derives RETAIN (first return) vs LAPSE (no return) from the activity
+        # day-set, so we only emit a return visit on the first day the hazard fires.
         start = t0 + W + G
         for day in range(start, min(span, start + H)):
-            h_conv = _sigmoid(BASE + CONF_BETA * a + GAMMA_TRUE * early_cart - DECAY * (day - start))
-            if rng.random() < h_conv:
-                rows.append(_ev(uid, day, "buy_start", rng, eid)); eid += 1
-                rows.append(_ev(uid, day, "buy_comp", rng, eid)); eid += 1
-                converted = True
+            h_ret = _sigmoid(RET_BASE + CONF_BETA * a + GAMMA_TRUE * early_cart - DECAY * (day - start))
+            if rng.random() < h_ret:
+                rows.append(_ev(uid, day, "item_view", rng, eid)); eid += 1  # returned
                 break
-            # occasional light browsing keeps them active
-            if rng.random() < 0.35:
-                rows.append(_ev(uid, day, "item_view", rng, eid)); eid += 1
-                last_active = day
-            elif day - last_active >= lapse_days:
-                break  # lapsed (absorbing) -> no more events
-        _ = converted
     df = pd.DataFrame(rows)
     return df.sort_values(["user_id", "stime"]).reset_index(drop=True)
 

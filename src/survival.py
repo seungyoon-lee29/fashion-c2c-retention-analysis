@@ -1,9 +1,9 @@
 """Discrete-time competing-risks survival: cause-specific hazards, CIF, OOT validation.
 
 - Empirical CIF via the Aalen-Johansen product-limit estimator (model-free description).
-- Cause-specific hazard models h_convert, h_lapse (logistic or GBM) used by the
-  g-computation impact stage. Competing risks => lapse is modelled, not treated as
-  non-informative censoring.
+- Cause-specific hazard models h_retain, h_lapse (logistic or GBM) used by the
+  g-computation impact stage. Competing risks => lapse (churn) is modelled, not treated
+  as non-informative censoring.
 - Out-of-time validation: fit on early cohorts, score later cohorts (the credibility core).
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-from personperiod import CONFOUNDER_COLS, CONVERT, LAPSE
+from personperiod import CONFOUNDER_COLS, RETAIN, LAPSE
 
 DESIGN_COLS = CONFOUNDER_COLS + ["aha_cart", "t"]
 
@@ -55,9 +55,9 @@ class _ConstHazard:
 
 
 def fit_cause_specific(pp: pd.DataFrame, cfg: dict) -> dict:
-    """Return fitted hazard models for convert and lapse."""
+    """Return fitted hazard models for retain (return) and lapse (churn)."""
     return {
-        "convert": _fit_one(pp, CONVERT, cfg),
+        "retain": _fit_one(pp, RETAIN, cfg),
         "lapse": _fit_one(pp, LAPSE, cfg),
         "cols": DESIGN_COLS,
     }
@@ -65,7 +65,7 @@ def fit_cause_specific(pp: pd.DataFrame, cfg: dict) -> dict:
 
 def predict_hazards(bundle: dict, X: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     Xa = X[bundle["cols"]].to_numpy(float)
-    hc = bundle["convert"].predict_proba(Xa)[:, 1]
+    hc = bundle["retain"].predict_proba(Xa)[:, 1]
     hl = bundle["lapse"].predict_proba(Xa)[:, 1]
     # keep total absorbing hazard < 1
     tot = hc + hl
@@ -74,41 +74,41 @@ def predict_hazards(bundle: dict, X: pd.DataFrame) -> tuple[np.ndarray, np.ndarr
 
 
 def empirical_cif(pp: pd.DataFrame, max_t: int | None = None) -> dict:
-    """Aalen-Johansen CIF for convert & lapse, plus overall survival."""
+    """Aalen-Johansen CIF for retain & lapse, plus overall survival."""
     if max_t is None:
         max_t = int(pp["t"].max())
     S_prev = 1.0
     cif_c = cif_l = 0.0
-    out = {"t": [], "cif_convert": [], "cif_lapse": [], "survival": []}
+    out = {"t": [], "cif_retain": [], "cif_lapse": [], "survival": []}
     for t in range(max_t + 1):
         at = pp[pp["t"] == t]
         n = len(at)
         if n == 0:
-            out["t"].append(t); out["cif_convert"].append(cif_c)
+            out["t"].append(t); out["cif_retain"].append(cif_c)
             out["cif_lapse"].append(cif_l); out["survival"].append(S_prev)
             continue
-        d_c = int((at["event"] == CONVERT).sum())
+        d_c = int((at["event"] == RETAIN).sum())
         d_l = int((at["event"] == LAPSE).sum())
         h_c, h_l = d_c / n, d_l / n
         cif_c += S_prev * h_c
         cif_l += S_prev * h_l
         S_prev = S_prev * (1 - h_c - h_l)
-        out["t"].append(t); out["cif_convert"].append(cif_c)
+        out["t"].append(t); out["cif_retain"].append(cif_c)
         out["cif_lapse"].append(cif_l); out["survival"].append(S_prev)
     return {k: np.array(v) for k, v in out.items()}
 
 
 def oot_validation(pp: pd.DataFrame, cohort: pd.DataFrame, cfg: dict) -> dict:
-    """Temporal split: fit on early-t0 cohort, score later cohort (per-step convert hazard)."""
+    """Temporal split: fit on early-t0 cohort, score later cohort (per-step retain hazard)."""
     t0 = cohort.set_index("user_id")["t0_day"]
     cut = t0.median()
     early = pp[pp["user_id"].map(t0) <= cut]
     late = pp[pp["user_id"].map(t0) > cut]
-    if early["event"].eq(CONVERT).sum() < 10 or late["event"].eq(CONVERT).sum() < 5:
+    if early["event"].eq(RETAIN).sum() < 10 or late["event"].eq(RETAIN).sum() < 5:
         return {"note": "insufficient events for OOT split", "n_early": len(early), "n_late": len(late)}
     bundle = fit_cause_specific(early, cfg)
     hc, _ = predict_hazards(bundle, late)
-    y = (late["event"].to_numpy() == CONVERT).astype(int)
+    y = (late["event"].to_numpy() == RETAIN).astype(int)
     return {
         "n_early_rows": int(len(early)), "n_late_rows": int(len(late)),
         "oot_pr_auc": float(average_precision_score(y, hc)) if y.sum() else None,
