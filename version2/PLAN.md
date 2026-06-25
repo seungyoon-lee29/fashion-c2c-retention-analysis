@@ -114,8 +114,9 @@
 > 둘: (a) **인기 베이스라인 대비 상대개선**(product_id/c1 레벨, 시간외) (b) **"C2C 73% 1회성 아이템에서 추천이 어디까지
 > 가능한가"라는 콜드스타트 문제 자체를 정량화**. 절대 Recall을 헤드라인으로 내세우지 않음. (M1 실측이 강도 확정.)
 
-> 🔴 **M0 선결작업**: `product_id`가 정규화 캐시 `data/events.parquet`에 **없다**(raw에만). M1 전에 `config.columns`와
-> `data._load_merrec`에 `product_id`를 추가하고 캐시를 재생성해야 1막이 한 줄이라도 돈다. 불가 시 1차 타깃을 `c1`로 강등.
+> **데이터 경로**(🔬 점검 확인): 1막은 `data/raw/2023*.parquet`를 **직접 읽어 지금 바로 돈다**(`product_id`는 raw에 존재,
+> `eval_baselines.py`가 이미 사용). 정규화 캐시 `data/events.parquet`엔 product_id가 없지만 1막엔 무관. `config.columns`에
+> product_id를 추가(코드 0줄, `make eda` 1회 재생성)하는 건 **v1 스파인을 product_id로 확장·통합할 때만** 필요(선택).
 
 ### 4.1 데이터 정형 & 누수 차단 평가 프로토콜 (← 리뷰 #2 수정)
 - session → `[e_{t0}, …, e_{tn}]`. 피처 = 행동타입·product_id·c0/c1·brand·price-bucket·item_condition·dwell(Δstime). **past-only**.
@@ -218,7 +219,7 @@ POP(인기) → **마르코프 1차**(v1 운영층 재사용) → **Session-KNN*
 ## 9. 마일스톤 & 산출물 (← 리뷰 #7)
 | M | 산출물 | 완료기준(DoD) |
 |---|---|---|
-| M0 Phase-0 | `docs/eda_findings.md` + GO/폴백 결정 | §3 임계 판정 + **§0 표 전 행 `validate()`로 재생성(⚠→✓)** + `product_id` 캐시 추가 + `decisions.md` 갱신 |
+| M0 Phase-0 | `docs/eda_findings.md` + GO/폴백 결정 | §3 임계 판정 + **§0 표 전 행 `validate()`로 재생성(⚠→✓)** + config W 잠금(D-11) + (스파인 확장 시)`product_id` 캐시 + `decisions.md` 갱신 |
 | M1 1막 베이스라인 | POP·마르코프·SKNN 시간외 지표표 | 인기 대비 lift(🔬예비: product 0.10→0.47, c1 0.59→0.85), 누수 프로토콜 검증 |
 | M2 1막 딥 | GRU4Rec(±SASRec) | M1 대비 NDCG@20 개선, 콜드 vs 웜 분해, **next-session split로 warm-부풀림 재검증** |
 | M3 2막 | `docs/causal_report.md` + ΔCIF·E-value | positivity(e_max<0.95·SMD<0.1) 판정 — 🔬예비 실패 → **R2 폴백(연관+E-value) 산출** |
