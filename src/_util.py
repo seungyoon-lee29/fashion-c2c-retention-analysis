@@ -33,17 +33,24 @@ def write_md(rel_path: str, text: str) -> Path:
     return p
 
 
-def df_to_md(df) -> str:
+def df_to_md(df, index: bool = False, float_digits: int = 3, na_rep: str = "nan") -> str:
     """Minimal markdown table (avoids the optional `tabulate` dependency)."""
+    if index:
+        df = df.reset_index()
     cols = list(df.columns)
     head = "| " + " | ".join(str(c) for c in cols) + " |"
     sep = "| " + " | ".join("---" for _ in cols) + " |"
-    rows = ["| " + " | ".join(_fmt(v) for v in row) + " |"
+    rows = ["| " + " | ".join(_fmt(v, float_digits, na_rep) for v in row) + " |"
             for row in df.itertuples(index=False, name=None)]
     return "\n".join([head, sep, *rows])
 
 
-def _fmt(v):
-    if isinstance(v, float):
-        return f"{v:.3f}"
+def _fmt(v, float_digits: int = 3, na_rep: str = "nan"):
+    try:
+        if np.isnan(v):
+            return na_rep
+    except (TypeError, ValueError):
+        pass
+    if isinstance(v, (float, np.floating)):
+        return f"{v:.{float_digits}f}"
     return str(v)

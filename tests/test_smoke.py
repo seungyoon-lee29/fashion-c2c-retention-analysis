@@ -15,6 +15,7 @@ from _util import load_config
 from data import build_cohort, load_events, validate
 from drivers import run as drivers_run
 from impact import run as impact_run
+from personperiod import full_followup_users, user_retention_label
 from survival import empirical_cif, fit_cause_specific, predict_hazards
 
 
@@ -41,6 +42,11 @@ def test_pipeline_and_ground_truth():
     pp = dr["pp"]
     assert not pp.empty
     assert set(pp["event"].unique()).issubset({0, 1, 2})
+    full_users = full_followup_users(events, cohort, cfg)
+    retained = user_retention_label(pp, full_users)
+    assert retained.index.isin(pp["user_id"].unique()).all()
+    assert set(retained.unique()).issubset({0, 1})
+    assert len(retained) <= pp["user_id"].nunique()
 
     # hazards in [0,1] and total absorbing hazard < 1
     bundle = fit_cause_specific(pp, cfg)
@@ -72,6 +78,16 @@ def test_pipeline_and_ground_truth():
 
     # E-value defined and > 1 for a real effect
     assert res["e_value"] > 1.0
+
+    # M2 identifiability map regenerates from committed code (write=False so it doesn't clobber
+    # the real-data report). Each lever yields a positivity verdict + in-range/NaN diagnostics.
+    from identifiability_map import run as idmap_run
+    idm = idmap_run(cfg, events, cohort, write=False)
+    assert len(idm) == 4
+    for lid, d in idm.items():
+        assert isinstance(d["overlap_ok"], bool), lid
+        em = d["e_max"]
+        assert (not np.isfinite(em)) or (0.0 <= em <= 1.0), f"{lid} e_max out of range: {em}"
 
 
 if __name__ == "__main__":

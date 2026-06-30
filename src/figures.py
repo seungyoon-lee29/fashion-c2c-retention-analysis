@@ -51,7 +51,7 @@ def fig_gap(sweep, out: Path, dpi):
 def fig_importance(imp, out: Path, dpi):
     plt.figure(figsize=(6, 4))
     plt.barh(imp["feature"][::-1], imp["importance"][::-1], color="#759")
-    plt.xlabel(f"importance ({imp.attrs.get('method','?')})"); plt.title("Retention drivers")
+    plt.xlabel(f"importance ({imp.attrs.get('method','?')})"); plt.title("Retention predictors")
     plt.tight_layout(); plt.savefig(out / "drivers_importance.png", dpi=dpi); plt.close()
 
 

@@ -2,12 +2,14 @@
 
 ## Retention risk difference under the activation lever (by horizon)
 
-- **naive (confounded)**: Δ=+0.1505  (r1=0.4770, r0=0.3265)
-- **g-formula (standardised)**: Δ=-0.0120  (CIF lever1=0.3389, lever0=0.3509)
-- **IPTW/MSM (cross-check)**: Δ=+0.0272
+_User-level naive/IPTW contrasts and g-formula standardisation use full-follow-up users only (n=22,165) so right-censored users are not counted as non-retained._
+
+- **naive (confounded)**: Δ=+0.1603  (r1=0.5467, r0=0.3864)
+- **g-formula (standardised)**: Δ=-0.0123  (CIF lever1=0.3533, lever0=0.3656)
+- **IPTW/MSM (cross-check)**: Δ=+0.0323
 - **risk ratio**=0.966 → **E-value**=1.23 (unmeasured confounder assoc. needed to explain it away)
 
-**Positivity**: e∈[0.056,0.587], frac extreme=0.0%, max weight=2.2
+**Positivity**: e∈[0.053,0.568], frac extreme=0.0%, max weight=2.1
 
 ## Out-of-time validation (fit early-t0 cohort → score later cohort)
 
@@ -19,7 +21,7 @@
 
 ## Identification diagnosis (g-formula vs IPTW)
 
-- **NULL effect**: both estimators within ±3pp of zero (g-formula -1.2pp, IPTW +2.7pp; abs diff 3.9pp). The 326% relative gap is a null-scale artifact (tiny denominator), **not** a genuine divergence — the effect's sign is not identified. Practical read: the activation lever has no reliable retention effect.
+- **DIVERGE**: rel-diff=362% and abs-diff=4.5pp exceed thresholds → diagnose which assumption binds (hazard-model misspecification vs propensity/positivity), do not average.
 
 ## Lever ledger (per 1000 new-observed users)
 

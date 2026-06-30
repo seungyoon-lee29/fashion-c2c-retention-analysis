@@ -50,10 +50,31 @@ impact:
     conservative: 0.5        # multiplier on anchored lever
     base: 1.0
     optimistic: 1.5
+  overlap_extreme_frac_max: 0.10   # M2: lever fails OVERLAP if >10% of units have e outside e_bounds
+  overlap_e_bounds: [0.05, 0.95]   # M2: propensity outside this band = non-overlap tail
+  lever_thresholds:                # M2 identifiability-map treatment defs: (feature ≥ value) ⇒ treated
+    n_cart: 1
+    n_offer: 1
+    cat_diversity: 3
+    n_like: 3
   iptw:
     clip_quantile: 0.99      # stabilise extreme weights; check positivity
   disagreement_threshold_pct: 30   # pre-registered: legs diverging > this => diagnose, not average
   negligible_effect_pp: 0.03       # |Δ| below this (both estimators) => effect is null; rel-divergence then uninformative, ledger omitted
+
+# M1 DA reports (funnel + cohort) — analysis params as single source (no magic numbers in code).
+da_reports:
+  retention_days: [1, 3, 7]        # cohort revisit horizons (D-k)
+  category_min_users: 500          # funnel: drop categories below this (noise floor)
+  breadth_quantiles: 4             # cohort driver: first-day-activity bins
+
+# M3 A/B design — power/MDE single source. primary_mde_pp is a BUSINESS judgment (see ab_test_design.md),
+# deliberately NOT reverse-derived from the available sample size.
+ab_test:
+  alpha: 0.05                      # two-sided significance
+  power: 0.80
+  mde_grid_pp: [1.0, 1.5, 2.0, 3.0, 5.0]   # absolute pp lifts to tabulate
+  primary_mde_pp: 2.0              # headline MDE
 
 figures:
   dir: docs/figures

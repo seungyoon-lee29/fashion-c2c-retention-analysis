@@ -16,7 +16,8 @@ from sklearn.metrics import (average_precision_score, f1_score,
                              matthews_corrcoef, precision_score, recall_score)
 
 from _util import df_to_md, load_config, write_md
-from personperiod import RETAIN, FEATURE_COLS, build_person_period, early_features
+from personperiod import (RETAIN, FEATURE_COLS, build_person_period,
+                          early_features, full_followup_users)
 from survival import DESIGN_COLS, fit_cause_specific, predict_hazards
 
 
@@ -75,14 +76,19 @@ def gap_sweep(events, cohort, cfg) -> pd.DataFrame:
     return pd.DataFrame(recs)
 
 
-def user_retention_label(pp: pd.DataFrame) -> pd.Series:
-    return pp.groupby("user_id")["event"].apply(lambda s: int((s == RETAIN).any()))
+def user_retention_label(pp: pd.DataFrame, eligible_users=None) -> pd.Series:
+    label = pp.groupby("user_id")["event"].apply(lambda s: int((s == RETAIN).any()))
+    if eligible_users is not None:
+        eligible = pd.Index(eligible_users)
+        label = label.reindex(label.index.intersection(eligible))
+    return label
 
 
 def aha_grid(events, cohort, pp, cfg) -> pd.DataFrame:
     """Grid over k and window n (n<=W) for the cart lever, scored on temporal holdout."""
     W = int(cfg["windows"]["feature_window_W"])
-    label = user_retention_label(pp)
+    eligible = full_followup_users(events, cohort, cfg)
+    label = user_retention_label(pp, eligible)
     t0 = cohort.set_index("user_id")["t0_day"]
     cut = t0.median()
     ev = events.copy()

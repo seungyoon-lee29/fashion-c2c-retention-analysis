@@ -3,6 +3,8 @@
 Time axis per user:  [t0, t0+W) feature window | [t0+W, t0+W+G) embargo | [t0+W+G, +H) outcome.
 The person-period table has one row per (user, step) from delayed entry to event/censor,
 with competing outcomes per step: 0=continue (at risk), 1=retain (returned/active), 2=lapse (absorbing churn).
+Survival models can use right-censored rows; user-level binary risk summaries must restrict to users
+with a full outcome window so censored users are not silently counted as non-retained.
 The spine models RETENTION: in MerRec first purchase is immediate (median 0 days from first
 observation), so it is acquisition, not retention; the leakage-safe outcome window therefore
 models whether a user RETURNS after the embargo. Covariates are measured strictly in the
@@ -50,6 +52,38 @@ def early_features(events: pd.DataFrame, cohort: pd.DataFrame, cfg: dict) -> pd.
     feats = feats.reindex(cohort["user_id"].values).fillna(0).astype(int)
     feats["aha_cart"] = (feats["n_cart"] >= 1).astype(int)   # lever
     return feats.reset_index().rename(columns={"index": "user_id"})
+
+
+def full_followup_users(events: pd.DataFrame, cohort: pd.DataFrame, cfg: dict,
+                        gap_override: int | None = None) -> pd.Index:
+    """Users whose full post-embargo outcome window is observed.
+
+    Use this before collapsing person-period rows into a user-level binary label; otherwise
+    right-censored users near the dataset end become false negatives.
+    """
+    W = int(cfg["windows"]["feature_window_W"])
+    G = int(cfg["windows"]["embargo_gap_G"] if gap_override is None else gap_override)
+    H = int(cfg["windows"]["horizon_H"])
+
+    ev = events.copy()
+    ev["stime"] = pd.to_datetime(ev["stime"])
+    data_start = ev["stime"].min().normalize()
+    day = (ev["stime"].dt.normalize() - data_start).dt.days
+    span = int(day.max()) + 1
+
+    kept = cohort[cohort["kept"]].set_index("user_id")
+    entry = kept["t0_day"].astype(int) + W + G
+    observed = (entry < span) & (entry + H - 1 < span)
+    return pd.Index(entry.index[observed], name="user_id")
+
+
+def user_retention_label(pp: pd.DataFrame, eligible_users: pd.Index | None = None) -> pd.Series:
+    """User-level retained label, optionally restricted to full-follow-up users."""
+    label = pp.groupby("user_id")["event"].apply(lambda s: int((s == RETAIN).any()))
+    if eligible_users is not None:
+        eligible = pd.Index(eligible_users)
+        label = label.reindex(label.index.intersection(eligible))
+    return label
 
 
 def build_person_period(events: pd.DataFrame, cohort: pd.DataFrame,

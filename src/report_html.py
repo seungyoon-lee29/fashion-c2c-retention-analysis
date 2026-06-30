@@ -1,10 +1,11 @@
-"""Build a single self-contained portfolio case-study page (report.html).
+"""Build the legacy self-contained portfolio case-study page.
 
 Curated presentation layer. Headline numbers are the locked real-MerRec results
 (docs/impact_report.md, docs/eda_findings.md, docs/drivers_report.md). Figures are
 base64-embedded so the file is shareable on its own. Written for a non-specialist:
 every causal-inference term is glossed inline and in the glossary.
-Run: `python src/report_html.py`  (or `make report`).
+Run: `python src/report_html.py`  (or `make report`). The current public
+portfolio path is README.md -> onepager.html -> docs/portfolio_report.md.
 """
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ import base64
 
 from _util import ROOT
 
-REPO = "https://github.com/seungyoon-lee29/project6.23-"
+REPO = "https://github.com/seungyoon-lee29/fashion-c2c-retention-analysis"
 HF = "https://huggingface.co/datasets/mercari-us/merrec"
 
 STATS = [
@@ -307,7 +308,7 @@ def build() -> str:
 <b>출처.</b> 데이터: MerRec © Mercari, Inc. — HuggingFace <a href="{HF}">mercari-us/merrec</a>, CC BY-NC 4.0 (비상업). KDD 2025.<br>
 본 페이지는 해당 데이터를 이용한 <b>비상업 교육·포트폴리오</b> 분석 결과물이며, 모든 수치·그림은 저장소의
 <code>make all</code>/<code>make report</code>로 재현된다. 설계 <code>PLAN.md</code> · 사전등록 <code>docs/decisions.md</code> ·
-여정 <code>docs/log.md</code> · 한계 <code>docs/limitations.md</code>. 저장소: <a href="{REPO}">{REPO}</a>
+여정 <code>docs/project_history.md</code> · 원본 로그 <code>docs/archive/build_log.md</code> · 한계 <code>docs/limitations.md</code>. 저장소: <a href="{REPO}">{REPO}</a>
 </p>
 
 </main></body></html>
@@ -315,7 +316,7 @@ def build() -> str:
 
 
 def main() -> int:
-    out = ROOT / "report.html"
+    out = ROOT / "docs" / "archive" / "report_legacy.html"
     out.write_text(build(), encoding="utf-8")
     print(f"[report_html] wrote {out} ({out.stat().st_size // 1024} KB)")
     return 0

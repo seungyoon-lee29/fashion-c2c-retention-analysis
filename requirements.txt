@@ -6,7 +6,11 @@ scikit-learn
 scipy
 matplotlib
 pyyaml
+duckdb
 
 # Optional enhancement — code degrades gracefully if missing:
 #   shap : SHAP driver importances (fallback: sklearn permutation_importance)
 shap
+
+# Test runner (optional for `make test`, useful for `python -m pytest tests/ -q`).
+pytest

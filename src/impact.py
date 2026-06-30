@@ -11,13 +11,16 @@ and a null-aware identification diagnosis (g-formula vs IPTW: null / agree / div
 """
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 from _util import load_config, write_md
 from personperiod import (CONFOUNDER_COLS, RETAIN, build_person_period,
-                          early_features)
+                          early_features, full_followup_users,
+                          user_retention_label)
 from survival import (DESIGN_COLS, fit_cause_specific, oot_validation,
                       predict_hazards)
 
@@ -41,21 +44,25 @@ def gformula_cif(bundle: dict, feats: pd.DataFrame, x: int, cfg: dict) -> float:
 
 
 def naive_delta(pp: pd.DataFrame) -> tuple[float, float, float]:
-    lab = pp.groupby("user_id").agg(conv=("event", lambda s: int((s == RETAIN).any())),
-                                    aha=("aha_cart", "first"))
+    lab = user_retention_label(pp).rename("conv").to_frame()
+    lab["aha"] = pp.groupby("user_id")["aha_cart"].first().reindex(lab.index)
     r1 = lab.loc[lab["aha"] == 1, "conv"].mean()
     r0 = lab.loc[lab["aha"] == 0, "conv"].mean()
     return float(r1 - r0), float(r1), float(r0)
 
 
 def iptw_delta(pp: pd.DataFrame, feats: pd.DataFrame, cfg: dict) -> dict:
-    lab = pp.groupby("user_id").agg(conv=("event", lambda s: int((s == RETAIN).any()))).reset_index()
+    lab = user_retention_label(pp).rename("conv").reset_index()
     f = feats.merge(lab, on="user_id")
     X = f[CONFOUNDER_COLS].to_numpy(float)
     a = f["aha_cart"].to_numpy(int)
     if a.sum() < 10 or a.sum() == len(a):
         return {"delta": np.nan, "positivity": None, "note": "degenerate treatment"}
-    e = LogisticRegression(max_iter=1000).fit(X, a).predict_proba(X)[:, 1]
+    # Near-separable early-activity propensities can emit solver over/underflow warnings.
+    # Keep the suppression local so unrelated numerical issues still surface.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+        e = LogisticRegression(max_iter=1000).fit(X, a).predict_proba(X)[:, 1]
     clip = float(cfg["impact"]["iptw"]["clip_quantile"])
     lo, hi = np.quantile(e, 1 - clip), np.quantile(e, clip)
     e = np.clip(e, max(1e-3, lo), min(1 - 1e-3, hi))
@@ -64,9 +71,10 @@ def iptw_delta(pp: pd.DataFrame, feats: pd.DataFrame, cfg: dict) -> dict:
     y = f["conv"].to_numpy(float)
     r1 = np.average(y[a == 1], weights=w[a == 1])
     r0 = np.average(y[a == 0], weights=w[a == 0])
+    lo_e, hi_e = cfg["impact"]["overlap_e_bounds"]
     return {"delta": float(r1 - r0), "r1": float(r1), "r0": float(r0),
             "positivity": {"e_min": float(e.min()), "e_max": float(e.max()),
-                           "frac_extreme": float(np.mean((e < 0.05) | (e > 0.95)))},
+                           "frac_extreme": float(np.mean((e < lo_e) | (e > hi_e)))},
             "weight_max": float(w.max())}
 
 
@@ -102,15 +110,18 @@ def run(cfg: dict, events, cohort, feats=None, pp=None, write: bool = True) -> d
         feats = early_features(events, cohort, cfg)
     if pp is None:
         pp = build_person_period(events, cohort, feats, cfg)
-    feats_kept = feats[feats["user_id"].isin(pp["user_id"].unique())].reset_index(drop=True)
+    kept_users = pd.Index(pp["user_id"].unique())
+    full_users = full_followup_users(events, cohort, cfg).intersection(kept_users)
+    pp_full = pp[pp["user_id"].isin(full_users)].copy()
+    feats_full = feats[feats["user_id"].isin(full_users)].reset_index(drop=True)
 
     bundle = fit_cause_specific(pp, cfg)
     oot = oot_validation(pp, cohort, cfg)
-    cif1 = gformula_cif(bundle, feats_kept, 1, cfg)
-    cif0 = gformula_cif(bundle, feats_kept, 0, cfg)
+    cif1 = gformula_cif(bundle, feats_full, 1, cfg)
+    cif0 = gformula_cif(bundle, feats_full, 0, cfg)
     g_delta = cif1 - cif0
-    nd, nr1, nr0 = naive_delta(pp)
-    iptw = iptw_delta(pp, feats_kept, cfg)
+    nd, nr1, nr0 = naive_delta(pp_full)
+    iptw = iptw_delta(pp_full, feats_full, cfg)
     rr = cif1 / cif0 if cif0 > 0 else np.nan
     ev = e_value(rr) if np.isfinite(rr) and rr > 0 else np.nan
     mk = markov_absorbing(pp, cfg)
@@ -143,6 +154,7 @@ def run(cfg: dict, events, cohort, feats=None, pp=None, write: bool = True) -> d
         "naive_delta": nd, "naive_r1": nr1, "naive_r0": nr0,
         "iptw": iptw, "risk_ratio": rr, "e_value": ev,
         "markov": mk, "ledger": ledger, "diagnosis": diagnosis, "oot": oot,
+        "n_full_followup_users": int(len(full_users)),
     }
     if write:  # off for tests/synthetic so they don't clobber the committed real-data report
         _write_report(res, cfg)
@@ -152,6 +164,8 @@ def run(cfg: dict, events, cohort, feats=None, pp=None, write: bool = True) -> d
 def _write_report(r: dict, cfg: dict):
     L = ["# Impact: g-computation + cross-checks\n"]
     L.append("## Retention risk difference under the activation lever (by horizon)\n")
+    L.append(f"_User-level naive/IPTW contrasts and g-formula standardisation use full-follow-up users only "
+             f"(n={r['n_full_followup_users']:,}) so right-censored users are not counted as non-retained._\n")
     L.append(f"- **naive (confounded)**: Δ={r['naive_delta']:+.4f}  (r1={r['naive_r1']:.4f}, r0={r['naive_r0']:.4f})")
     L.append(f"- **g-formula (standardised)**: Δ={r['gformula_delta']:+.4f}  "
              f"(CIF lever1={r['cif_lever1']:.4f}, lever0={r['cif_lever0']:.4f})")

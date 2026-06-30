@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보이는 레버를 의심한 패션 C2C 신규 유저 리텐션 분석 — 이승윤</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  /* type */
+  --font-body:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-display:'Fraunces','Pretendard',Georgia,serif;
+  --font-mono:'IBM Plex Mono','Pretendard',ui-monospace,monospace;
+  /* paper palette */
+  --paper:#F4EFE6; --paper-deep:#ECE4D5; --surface:#FBF8F2;
+  --ink:#1C1916; --ink-soft:#4A443B; --muted:#8A8173;
+  --rule:#D9D1C0; --rule-strong:#B6AC97;
+  --oxblood:#7B2E2C; --pine:#3E6B4F; --ochre:#A9792A; --brick:#B23A2E; --inkblue:#2C4A6E;
+  --tint-oxblood:#F0E4DE; --tint-pine:#E4EBE4; --tint-ochre:#F2EAD6; --tint-blue:#E3E8EF;
+  /* type scale */
+  --fs-mega:128px; --fs-title:60px; --fs-h1:48px; --fs-h2:34px; --fs-h3:20px;
+  --fs-lead:21px; --fs-body:17px; --fs-data:15px; --fs-cap:12px; --fs-micro:10.5px;
+  /* spacing */
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;--s9:84px;
+  --ease-print:cubic-bezier(.2,.7,.2,1);
+  --ease-rule:cubic-bezier(.7,0,.3,1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{height:100%;}
+body{
+  font-family:var(--font-body);
+  color:var(--ink);
+  background:var(--paper);
+  -webkit-font-smoothing:antialiased;
+  font-feature-settings:"ss01";
+}
+
+.deck{display:block;}
+
+.stage{background:var(--paper);}
+
+/* ── Slide shell — continuous-stack default; flip is screen-only ─ */
+.slide{
+  position:relative;
+  width:1280px;height:720px;margin:0 auto;
+  padding:var(--s7) var(--s9) calc(var(--s8) + 12px);
+  display:flex;flex-direction:column;
+  background:var(--paper);
+  overflow:hidden;
+  break-after:page;
+}
+/* flip-deck: screen-only, enabled by JS (body.js-deck); print/no-JS = clean stack */
+@media screen{
+  body.js-deck{overflow:hidden;background:#2a2724;}
+  body.js-deck .deck{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  body.js-deck .stage{position:relative;width:100vw;height:100vh;overflow:hidden;}
+  body.js-deck .slide{position:absolute;inset:0;width:auto;height:auto;margin:0;opacity:0;visibility:hidden;transition:opacity .42s var(--ease-print);z-index:1;}
+  body.js-deck .slide.active{opacity:1;visibility:visible;z-index:2;}
+}
+@media screen and (min-aspect-ratio:16/9){ body.js-deck .stage{width:calc(100vh * 16 / 9);height:100vh;} }
+@media screen and (max-aspect-ratio:16/9){ body.js-deck .stage{width:100vw;height:calc(100vw * 9 / 16);} }
+.slide.center{justify-content:center;}
+
+/* masthead */
+.mast{
+  display:flex;align-items:baseline;justify-content:space-between;
+  border-top:1.5px solid var(--rule-strong);
+  padding-top:10px;margin-bottom:var(--s6);
+  flex:0 0 auto;
+}
+.kicker{font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.22em;text-transform:uppercase;color:var(--muted);}
+.kicker .rn{color:var(--oxblood);}
+.folio{font:500 18px/1 var(--font-display);color:var(--muted);font-variant-numeric:lining-nums tabular-nums;letter-spacing:.04em;}
+
+/* headings */
+h1{font-family:var(--font-body);font-weight:800;font-size:var(--fs-h1);line-height:1.12;letter-spacing:-.02em;}
+h2{
+  font-family:var(--font-body);font-weight:800;font-size:var(--fs-h2);line-height:1.18;letter-spacing:-.02em;
+  padding-bottom:14px;border-bottom:1px solid var(--rule);margin-bottom:var(--s5);flex:0 0 auto;
+}
+h3{font-size:var(--fs-h3);font-weight:700;letter-spacing:-.01em;}
+.lead{font-size:var(--fs-lead);line-height:1.55;color:var(--ink-soft);font-weight:500;max-width:62ch;}
+p{font-size:var(--fs-body);line-height:1.7;color:var(--ink-soft);}
+strong{color:var(--ink);font-weight:700;}
+.accent{color:var(--oxblood);}
+.neg{color:var(--brick);}
+.pos{color:var(--pine);}
+em{font-style:normal;color:var(--ink);font-weight:600;}
+
+/* body region grows */
+.body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;min-height:0;} /* ponytail: centers light slides; flex-fill children (s2/4/5) override naturally */
+.row{display:flex;gap:var(--s7);}
+.row.fill{flex:1 1 auto;align-items:center;}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--s4);}
+.col.wide{flex:1.35;} .col.narrow{flex:.72;}
+.spread{justify-content:space-between;} .vcenter{justify-content:center;}
+
+/* ── Money numeral (one oxblood per slide) ──────────────── */
+.money{display:flex;flex-direction:column;gap:6px;}
+.money .fig{
+  font-family:var(--font-display);font-optical-sizing:auto;
+  font-weight:600;font-size:var(--fs-mega);line-height:.86;letter-spacing:-.03em;
+  color:var(--oxblood);font-variant-numeric:lining-nums tabular-nums;
+  display:flex;align-items:flex-start;
+}
+.money .fig .unit{font-size:.30em;font-weight:600;margin-top:.5em;margin-left:.08em;font-family:var(--font-mono);letter-spacing:0;}
+.money .rule-under{height:2px;width:64px;background:var(--oxblood);margin:2px 0 4px;}
+.money .cap{font:500 var(--fs-micro)/1.3 var(--font-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+.money .sub{font-size:var(--fs-data);color:var(--ink-soft);}
+
+/* normal stat — deliberately colorless, half-weight of hero */
+.stat .fig{font-family:var(--font-display);font-weight:500;font-size:52px;line-height:.9;color:var(--ink);font-variant-numeric:lining-nums tabular-nums;letter-spacing:-.02em;}
+.stat .fig .unit{font-size:.34em;font-family:var(--font-mono);color:var(--muted);margin-left:.1em;}
+.stat .cap{font:500 var(--fs-micro)/1.3 var(--font-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:6px;}
+.stat .sub{font-size:var(--fs-data);color:var(--ink-soft);margin-top:2px;}
+
+/* ── Authentication stamp (replaces correlation badge) ──── */
+.stamp{
+  display:inline-flex;align-items:center;gap:5px;
+  transform:rotate(-3.5deg);transform-origin:left center;
+  border:1.5px double var(--oxblood);color:var(--oxblood);background:var(--tint-oxblood);
+  font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.12em;padding:5px 9px;text-transform:uppercase;
+  border-radius:2px;white-space:nowrap;
+}
+.stamp.pass{border-color:var(--pine);color:var(--pine);background:var(--tint-pine);}
+.stamp.reject{border-color:var(--oxblood);color:var(--oxblood);transform:rotate(-2deg);font-size:var(--fs-cap);padding:8px 14px;}
+
+/* ── Ledger table ───────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;}
+th{font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 14px 9px;border-bottom:1.5px solid var(--rule-strong);}
+th.r,td.r{text-align:right;}
+td{padding:11px 14px;border-bottom:1px solid var(--rule);font-size:var(--fs-data);color:var(--ink-soft);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink);}
+td.lever{color:var(--ink);font-weight:600;}
+td.lever .en{color:var(--muted);font:500 var(--fs-cap)/1 var(--font-mono);margin-left:6px;}
+tr.band td{background:var(--paper-deep);}
+.verdict{font:600 var(--fs-cap)/1 var(--font-mono);letter-spacing:.06em;}
+.v-bad{color:var(--brick);} .v-na{color:var(--muted);} .v-ok{color:var(--pine);}
+.arrow{color:var(--muted);font-family:var(--font-mono);padding:0 2px;}
+
+/* caption */
+.cap{font:500 var(--fs-cap)/1.5 var(--font-mono);letter-spacing:.02em;color:var(--muted);}
+.gloss{color:var(--muted);font-size:.92em;}
+
+/* ── Callout (whisper tint + semantic left rule) ────────── */
+.call{border-left:3px solid var(--oxblood);background:var(--tint-oxblood);padding:16px 20px;border-radius:0 4px 4px 0;}
+.call .lbl{font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--oxblood);margin-bottom:7px;display:block;}
+.call p{font-size:var(--fs-body);line-height:1.6;color:var(--ink);}
+.call.warn{border-color:var(--brick);background:var(--tint-ochre);} .call.warn .lbl{color:var(--brick);}
+.call.note{border-color:var(--inkblue);background:var(--tint-blue);} .call.note .lbl{color:var(--inkblue);}
+.call.good{border-color:var(--pine);background:var(--tint-pine);} .call.good .lbl{color:var(--pine);}
+
+/* pull-quote */
+.pull{border-left:3px solid var(--oxblood);padding:4px 0 4px 22px;font-size:23px;line-height:1.5;color:var(--ink);font-weight:600;letter-spacing:-.01em;}
+
+/* funnel */
+.funnel{display:flex;flex-direction:column;gap:7px;width:100%;}
+.fbar{display:flex;align-items:center;gap:14px;}
+.fbar .flabel{width:118px;flex:0 0 auto;font-size:var(--fs-data);color:var(--ink);font-weight:600;text-align:right;}
+.fbar .ftrack{flex:1;height:34px;position:relative;background:transparent;}
+.fbar .ffill{height:100%;border-radius:1px;display:flex;align-items:center;padding-left:12px;}
+.fbar .ffill .pct{font:600 var(--fs-data)/1 var(--font-mono);color:var(--paper);}
+.fbar .fmeta{width:150px;flex:0 0 auto;font:500 var(--fs-cap)/1.3 var(--font-mono);color:var(--muted);}
+.fbar .fmeta .leak{color:var(--brick);font-weight:600;}
+
+/* quartile bars */
+.bars{display:flex;align-items:flex-end;gap:18px;height:230px;padding-top:8px;}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:8px;}
+.bcol .bval{font-family:var(--font-display);font-weight:600;font-size:25px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.bcol.hi .bval{color:var(--oxblood);}
+.bcol .bci{font:500 var(--fs-micro)/1 var(--font-mono);color:var(--muted);}
+.bcol .bfill{width:100%;background:var(--rule-strong);border-radius:2px 2px 0 0;}
+.bcol.hi .bfill{background:var(--oxblood);}
+.bcol .blabel{font:600 var(--fs-cap)/1.2 var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;}
+.bcol.hi .blabel{color:var(--oxblood);}
+
+/* spec grid (A/B) */
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);}
+.spec .cell{background:var(--paper);padding:13px 16px;}
+.spec .k{font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.spec .v{font-size:var(--fs-body);color:var(--ink);font-weight:600;line-height:1.35;}
+.spec .v small{font-weight:500;color:var(--ink-soft);font-size:var(--fs-data);}
+
+/* provenance ledger */
+.ledger{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);}
+.ledger .cell{background:var(--paper);padding:14px 16px;}
+.ledger .k{font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.ledger .v{font-size:var(--fs-body);color:var(--ink);font-weight:600;}
+.ledger .v .num{font-family:var(--font-display);font-variant-numeric:tabular-nums;}
+
+/* spine strip */
+.spine{display:flex;gap:0;border:1px solid var(--rule);}
+.spine .seg{flex:1;padding:14px 16px;border-right:1px solid var(--rule);}
+.spine .seg:last-child{border-right:none;background:var(--tint-oxblood);}
+.spine .seg .rn{font:600 13px/1 var(--font-display);color:var(--oxblood);letter-spacing:.04em;}
+.spine .seg .t{font-size:var(--fs-body);font-weight:700;color:var(--ink);margin:5px 0 3px;}
+.spine .seg .d{font-size:var(--fs-cap);color:var(--muted);line-height:1.45;}
+
+/* checklist */
+.checks{display:flex;flex-wrap:wrap;gap:8px 18px;}
+.checks span{font-size:var(--fs-data);color:var(--ink-soft);}
+.checks span::before{content:"✓";color:var(--pine);font-weight:700;margin-right:6px;}
+
+/* title meta footer */
+.meta-foot{display:flex;flex-wrap:wrap;gap:6px 18px;font:500 var(--fs-cap)/1.4 var(--font-mono);color:var(--muted);letter-spacing:.02em;}
+.meta-foot .sep{color:var(--rule-strong);}
+
+/* lists */
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:9px;}
+ul.clean li{font-size:var(--fs-body);color:var(--ink-soft);line-height:1.45;padding-left:18px;position:relative;}
+ul.clean li::before{content:"—";position:absolute;left:0;color:var(--oxblood);font-weight:700;}
+
+/* ── Navigation chrome ──────────────────────────────────── */
+.progress{position:absolute;left:0;bottom:0;height:3px;background:var(--oxblood);width:0;z-index:40;transition:width .42s var(--ease-print);}
+.foot{
+  position:absolute;left:var(--s9);bottom:22px;z-index:30;
+  display:flex;align-items:center;gap:16px;
+}
+.foot .pageno{font:500 16px/1 var(--font-display);color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.04em;}
+.foot .navbtn{background:none;border:none;cursor:pointer;font:500 var(--fs-cap)/1 var(--font-mono);letter-spacing:.08em;color:var(--muted);padding:4px 6px;text-transform:uppercase;transition:color .15s;}
+.foot .navbtn:hover{color:var(--oxblood);}
+.foot .navbtn:disabled{opacity:.3;cursor:default;}
+.ticks{position:absolute;right:var(--s9);bottom:24px;z-index:30;display:flex;align-items:flex-end;gap:7px;}
+.ticks .tick{width:2px;height:9px;background:var(--rule-strong);cursor:pointer;transition:all .2s;}
+.ticks .tick.on{height:16px;background:var(--oxblood);}
+
+/* ── Load motion (CSS only) ─────────────────────────────── */
+.slide.active > *{animation:rise .5s var(--ease-print) both;animation-delay:calc(var(--i,0) * 70ms);}
+@keyframes rise{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:none;}}
+.slide.active .strike{animation:strike .75s var(--ease-print) both;animation-delay:calc(var(--i,0) * 70ms + 110ms);}
+@keyframes strike{from{clip-path:inset(100% 0 0 0);}to{clip-path:inset(0 0 0 0);}}
+.mast{animation-name:drawrule!important;}
+@keyframes drawrule{from{opacity:0;transform:scaleX(.4);transform-origin:left;}to{opacity:1;transform:none;}}
+
+@media (prefers-reduced-motion:reduce){
+  .slide.active > *,.slide.active .strike,.mast{animation:none!important;}
+  .slide,.progress{transition:none!important;}
+}
+
+/* (16:9 framing now lives in the screen-only flip block above) */
+
+/* ── Contents (목차) ─────────────────────────────────────── */
+.toc{display:flex;flex-direction:column;border-top:1px solid var(--rule);}
+.titem{display:flex;align-items:baseline;gap:var(--s5);padding:13px 4px;border-bottom:1px solid var(--rule);}
+.titem .trn{flex:0 0 54px;font:600 26px/1 var(--font-display);color:var(--oxblood);font-variant-numeric:lining-nums tabular-nums;letter-spacing:.01em;}
+.titem .ttt{flex:0 0 200px;font-size:22px;font-weight:700;color:var(--ink);}
+.titem .ttd{font-size:var(--fs-body);color:var(--ink-soft);line-height:1.4;}
+
+/* ── Print = clean PDF (stack is already the default) ────── */
+@media print{
+  @page{size:1280px 720px;margin:0;}
+  html,body{background:#fff;}
+  .deck,.stage{display:block;width:auto;height:auto;}
+  .slide{margin:0;page-break-after:always;break-after:page;}
+  section.slide:last-of-type{page-break-after:auto;break-after:auto;}
+  .progress,.foot,.ticks{display:none!important;}
+  *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; animation:none!important; }
+}
+
+/* ── Event glossary chips (데이터 소개) ───────────────────── */
+.evrow{display:flex;flex-wrap:wrap;gap:10px;}
+.ev{font-size:var(--fs-cap);color:var(--ink-soft);background:var(--paper-deep);border:1px solid var(--rule);border-radius:5px;padding:7px 13px;}
+.ev b{color:var(--oxblood);font-weight:700;margin-right:6px;}
+
+/* ── why-D7 evidence strip ───────────────────────────────── */
+.why7{margin-top:var(--s5);border-top:1px solid var(--rule);padding-top:13px;}
+.why7 .lbl{font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.1em;color:var(--oxblood);}
+.why7grid{display:flex;gap:var(--s5);margin-top:9px;}
+.why7grid p{flex:1;font-size:var(--fs-cap);color:var(--ink-soft);line-height:1.45;margin:0;}
+.why7grid strong{color:var(--ink);font-weight:700;}
+.why7 .note{display:block;margin-top:9px;font-size:var(--fs-micro);color:var(--muted);}
+
+/* ── figures in a neutral sans (off Fraunces) per request ─── */
+.fig,.money .fig,.stat .fig,.bcol .bval,.ledger .v .num{font-family:var(--font-body);}
+
+/* ── SQL evidence block ──────────────────────────────────── */
+.sqlbox{border:1px solid var(--rule);border-radius:5px;background:var(--surface);overflow:hidden;}
+.sqllbl{font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--paper-deep);padding:8px 12px;border-bottom:1px solid var(--rule);}
+pre.sql{font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--ink-soft);padding:12px 14px;white-space:pre;overflow:hidden;tab-size:2;}
+pre.sql .kw{color:var(--oxblood);font-weight:600;}
+pre.sql .fn{color:var(--inkblue);}
+pre.sql .cm{color:var(--muted);font-style:italic;}
+pre.sql .lit{color:var(--pine);}
+.collbl{color:var(--muted);font:600 var(--fs-micro)/1 var(--font-mono);letter-spacing:.16em;text-transform:uppercase;margin-bottom:var(--s2);}
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="stage" id="stage">
+
+    <!-- ═══ 01 · COLD-OPEN HOOK ═══════════════════════════════ -->
+    <section class="slide center" data-tick="표지">
+      <header class="mast"><span class="kicker">RETENTION LEDGER · <span class="rn">패션 C2C</span></span><span class="folio">01 / 09</span></header>
+      <div class="body vcenter" style="gap:var(--s5);">
+        <div class="row" style="align-items:flex-end;gap:var(--s7);">
+          <div class="money strike">
+            <div class="fig">+16<span class="unit">%p</span></div>
+            <div class="rule-under"></div>
+            <div class="cap">카트 담은 유저의 재방문 격차 · 보정 전 · person-period</div>
+          </div>
+          <div style="padding-bottom:10px;"><span class="stamp">상관 · 인과 아님</span></div>
+        </div>
+        <div class="pull" style="max-width:60ch;">보통은 여기서 “카트 기능을 밀자”고 한다.<br>나는 멈췄다 — 이게 <em>당겨도 되는 진짜 레버</em>인지, 데이터가 확신을 주지 않았기 때문이다.</div>
+        <h1 style="margin-top:var(--s4);font-size:var(--fs-title);line-height:1.08;">보이는 레버를 의심한<br>패션 C2C 신규 유저 <span class="accent">리텐션 분석</span></h1>
+        <p class="cap" style="margin-top:var(--s4);max-width:74ch;letter-spacing:0;text-transform:none;font-size:var(--fs-data);line-height:1.55;color:var(--ink-soft);">이 <strong style="color:var(--ink);">+16%p</strong>로 카트에 다음 분기를 쓸 뻔했다 — 멈췄다. <strong style="color:var(--ink);">KPI 재정의 · 상관/인과 구분 · A/B 설계.</strong></p>
+      </div>
+      <div class="meta-foot" style="margin-top:var(--s4);">
+        <span>이승윤 · 데이터 분석가 (Product · Growth)</span><span class="sep">/</span>
+        <span>sy3097@gmail.com</span><span class="sep">/</span>
+        <span>github.com/seungyoon-lee29</span><span class="sep">/</span>
+        <span>데이터 MerRec(mercari-us/merrec) · CC BY-NC 4.0</span><span class="sep">/</span>
+        <span>분석 수행 2026-06-23 ~ 06-30</span>
+      </div>
+    </section>
+
+    <!-- ═══ 02 · WHY RETENTION / WHY D7 ═══════════════════════ -->
+    <section class="slide" data-tick="문제 설정">
+      <header class="mast"><span class="kicker"><span class="rn">0.</span> 문제 설정 · FRAMING</span><span class="folio">02 / 09</span></header>
+      <h2>왜 리텐션인가, 왜 <span class="accent">D7</span>인가</h2>
+      <div class="body">
+        <p class="lead" style="margin-bottom:var(--s4);">패션 C2C는 판매자가 곧 구매자다. 신규 유저가 떠나면 <strong>공급과 수요가 동시에</strong> 준다. 그래서 ‘첫 구매’보다 ‘다시 돌아오는가’가 더 중요하다.</p>
+        <div class="row fill spread">
+          <div class="stat">
+            <div class="fig">4.4<span class="unit">%</span></div>
+            <div class="cap">구매 완료율 (유저 기준)</div>
+            <div class="sub">너무 드물어 작은 개선이 묻힌다</div>
+          </div>
+          <div style="font:300 40px/1 var(--font-display);color:var(--rule-strong);align-self:center;">→</div>
+          <div class="money">
+            <div class="fig">50.1<span class="unit">%</span></div>
+            <div class="rule-under"></div>
+            <div class="cap">D7 재방문율 · 전환보다 11배 자주 관측</div>
+            <div class="sub">신규 2명 중 1명은 7일 내 다시 온다</div>
+          </div>
+          <div class="col narrow">
+            <div class="call good">
+              <span class="lbl">결정</span>
+              <p>희소한 전환을 주지표로 두면 개선이 보이지 않는다. <strong>7일 내 재방문(D7)</strong>을 분석의 <strong>핵심 추적 지표</strong><span class="gloss"> (North Star)</span>로 삼는다.</p>
+            </div>
+          </div>
+        </div>
+        <div class="why7">
+          <span class="lbl">그런데 왜 D7? — D5·D14가 아니라</span>
+          <div class="why7grid">
+            <p><strong>관측창이 1개월</strong> — D14·D30은 늦게 들어온 코호트가 우검열로 잘려 표본이 급감한다. D7은 큰 표본(<strong>30,209명</strong>)을 확보하는 가장 긴 창.</p>
+            <p><strong>D1·D3은 너무 이름</strong> — 첫 구매가 중앙값 0일이라 아직 ‘획득’ 구간. D7은 첫 세션 창(3일)을 지나 ‘진짜 복귀’를 본다.</p>
+            <p><strong>주(week) 단위 리듬</strong> — 한 주(주중·주말)를 담는 제품분석 표준 창. 더 짧으면 요일 편향이 커진다.</p>
+          </div>
+          <span class="note">D14·D30은 버리지 않고 매출·장기 후속검증으로 예약(A/B 슬라이드). · 재방문 = 행동 지표(재구매·매출과 다름).</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 03 · DATA & TRUST (merged) ════════════════════════ -->
+    <section class="slide" data-tick="데이터">
+      <header class="mast"><span class="kicker"><span class="rn">0.</span> 데이터 · DATA &amp; QA</span><span class="folio">03 / 09</span></header>
+      <h2>어떤 데이터이고, <span class="accent">믿어도 되는가</span></h2>
+      <div class="body">
+        <p class="lead" style="max-width:74ch;">MerRec은 <strong>Mercari US</strong>(미국 최대 C2C 중고거래 앱)의 익명 행동 로그(KDD 2025). <strong>신규 유저</strong>의 첫 방문~재방문을 본다 · 한 행 = 한 이벤트(유저·세션·시각·상품·가격). 결론 전에 SQL로 원천을 먼저 점검했다.</p>
+        <div class="row" style="gap:var(--s7);align-items:flex-start;margin-top:var(--s5);">
+          <div class="col" style="flex:1.02;">
+            <div class="ledger">
+              <div class="cell"><div class="k">유저</div><div class="v"><span class="num">43,311</span> 명</div></div>
+              <div class="cell"><div class="k">이벤트 · 세션</div><div class="v"><span class="num">2,771,473</span> · <span class="num">494,603</span></div></div>
+              <div class="cell"><div class="k">관측창</div><div class="v"><span class="num">2023-05</span> · 31일</div></div>
+              <div class="cell"><div class="k">품질점검</div><div class="v"><span class="stamp pass" style="transform:none;">SQL · PASS</span></div></div>
+            </div>
+            <div class="evrow" style="margin-top:var(--s4);">
+              <span class="ev"><b>조회</b>봄</span><span class="ev"><b>찜</b>저장</span><span class="ev"><b>카트</b>담기</span><span class="ev"><b>오퍼</b>가격제안</span><span class="ev"><b>구매시작</b>결제진입</span><span class="ev"><b>구매완료</b>결제완료</span>
+            </div>
+            <p class="cap" style="margin-top:var(--s4);">점검: 이벤트 어휘 6종 · 결측 · 음수/0원 가격 · 타임스탬프 범위 · 중복키(2,466건) → 분석 가능 판정.</p>
+          </div>
+          <div class="col" style="flex:.98;">
+            <div class="sqlbox">
+              <div class="sqllbl">코호트 D7 재방문 — 실제 쿼리 (DuckDB, 요약)</div>
+<pre class="sql"><span class="kw">WITH</span> first_seen <span class="kw">AS</span> (        <span class="cm">-- t0 = 첫 관측</span>
+  <span class="kw">SELECT</span> user_id, <span class="fn">min</span>(stime) <span class="kw">AS</span> t0
+  <span class="kw">FROM</span> events <span class="kw">GROUP BY</span> user_id
+)
+<span class="kw">SELECT</span>
+  <span class="fn">count</span>(<span class="kw">DISTINCT</span> f.user_id)                    <span class="cm">-- eligible</span>
+, <span class="fn">count</span>(<span class="kw">DISTINCT</span> e.user_id) <span class="kw">FILTER</span> (<span class="kw">WHERE</span> e.stime
+    <span class="kw">BETWEEN</span> f.t0 + <span class="lit">INTERVAL 1 DAY</span>
+        <span class="kw">AND</span> f.t0 + <span class="lit">INTERVAL 7 DAY</span>) <span class="cm">-- D7 재방문</span>
+<span class="kw">FROM</span> first_seen f
+<span class="kw">JOIN</span> events e <span class="kw">USING</span> (user_id)
+<span class="kw">WHERE</span> f.t0 &gt;= <span class="lit">DATE '2023-05-02'</span>;       <span class="cm">-- 좌측절단 보정</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 04 · FUNNEL ═══════════════════════════════════════ -->
+    <section class="slide" data-tick="퍼널">
+      <header class="mast"><span class="kicker"><span class="rn">Ⅰ.</span> 퍼널 · FUNNEL</span><span class="folio">04 / 09</span></header>
+      <h2>어디서 <span class="accent">새는가</span></h2>
+      <div class="body vcenter">
+        <div class="funnel">
+          <div class="fbar"><div class="flabel">조회 view</div><div class="ftrack"><div class="ffill" style="width:98.7%;background:rgba(28,25,22,.34);"><span class="pct">98.7%</span></div></div><div class="fmeta">42,734명</div></div>
+          <div class="fbar"><div class="flabel">찜 like</div><div class="ftrack"><div class="ffill" style="width:52.6%;background:rgba(28,25,22,.46);"><span class="pct">52.6%</span></div></div><div class="fmeta"><span class="leak">▼ −20,082명 · 최대 유출</span></div></div>
+          <div class="fbar"><div class="flabel">카트 cart</div><div class="ftrack"><div class="ffill" style="width:22.9%;background:rgba(28,25,22,.58);"><span class="pct">22.9%</span></div></div><div class="fmeta">9,897명</div></div>
+          <div class="fbar"><div class="flabel">오퍼 offer</div><div class="ftrack"><div class="ffill" style="width:17.1%;background:rgba(28,25,22,.68);"><span class="pct">17.1%</span></div></div><div class="fmeta">7,386명 · 병렬</div></div>
+          <div class="fbar"><div class="flabel">구매 시작</div><div class="ftrack"><div class="ffill" style="width:5.7%;background:rgba(28,25,22,.80);"><span class="pct">5.7%</span></div></div><div class="fmeta">2,478명</div></div>
+          <div class="fbar"><div class="flabel">구매 완료</div><div class="ftrack"><div class="ffill" style="width:4.4%;background:var(--oxblood);"><span class="pct">4.4%</span></div></div><div class="fmeta">1,923명</div></div>
+        </div>
+        <div class="call" style="margin-top:var(--s6);">
+          <span class="lbl">읽는 법</span>
+          <p>가장 큰 누수는 <strong>조회 → 찜</strong> 구간(−20,082명). 게다가 구매 완료는 <strong>4.4%</strong>로 너무 드물다 → 주지표를 구매가 아닌 <strong>D7 재방문</strong>으로 두는 근거다.</p>
+        </div>
+        <p class="cap" style="margin-top:var(--s4);">도달률(reach) 기준 · 순차 전환율 아님(오퍼·즉시구매는 병렬 경로) · 최대 누수 조회→찜.</p>
+      </div>
+    </section>
+
+    <!-- ═══ 05 · COHORT (the temptation) ══════════════════════ -->
+    <section class="slide" data-tick="코호트">
+      <header class="mast"><span class="kicker"><span class="rn">Ⅱ.</span> 코호트 · COHORT</span><span class="folio">05 / 09</span></header>
+      <h2>누가 <span class="accent">돌아오는가</span></h2>
+      <div class="body">
+        <div class="row fill" style="gap:var(--s8);">
+          <div class="col narrow" style="gap:var(--s5);">
+            <div class="stat">
+              <div class="fig">50.1<span class="unit">%</span></div>
+              <div class="cap">전체 신규 유저 D7 재방문</div>
+              <div class="sub">95% 신뢰구간 49.6–50.7%</div>
+            </div>
+            <div class="row" style="align-items:flex-end;gap:var(--s4);">
+              <div class="money">
+                <div class="fig">+27<span class="unit">%p</span></div>
+                <div class="rule-under"></div>
+                <div class="cap">첫날 활발 상위 25% vs 하위 25%</div>
+              </div>
+              <div style="padding-bottom:8px;"><span class="stamp">상관 · 인과 아님</span></div>
+            </div>
+          </div>
+          <div class="col wide vcenter">
+            <div class="bars">
+              <div class="bcol"><div class="bval">39.3%</div><div class="bfill" style="height:59%"></div><div class="bci">38.3–40.5</div><div class="blabel">최소 활동</div></div>
+              <div class="bcol"><div class="bval">44.2%</div><div class="bfill" style="height:67%"></div><div class="bci">43.0–45.3</div><div class="blabel">적음</div></div>
+              <div class="bcol"><div class="bval">50.8%</div><div class="bfill" style="height:77%"></div><div class="bci">49.7–51.9</div><div class="blabel">많음</div></div>
+              <div class="bcol hi"><div class="bval">66.2%</div><div class="bfill" style="height:100%"></div><div class="bci">65.2–67.3</div><div class="blabel">최다 활동</div></div>
+            </div>
+            <p class="cap" style="margin-top:var(--s4);">막대 = 첫날 활동량으로 4등분(각 25%, 최소 → 최다 활동) · 95% 신뢰구간(Wilson).</p>
+          </div>
+        </div>
+        <p style="margin-top:var(--s4);">절반이 돌아온다. 그리고 첫날 활발했던 상위 그룹이 +27%p 더 돌아온다 — <strong>단, 여기까지는 아직 ‘상관’일 뿐이다.</strong></p>
+      </div>
+    </section>
+
+    <!-- ═══ 06 · CLIMAX A — the kill ══════════════════════════ -->
+    <section class="slide" data-tick="레버 검증">
+      <header class="mast"><span class="kicker"><span class="rn">Ⅲ.</span> 이 상관을 인과로 볼 수 있나 · IDENTIFIABILITY</span><span class="folio">06 / 09</span></header>
+      <h2>보이는 레버 4개, <span class="neg">전부 무너졌다</span></h2>
+      <div class="body">
+        <div class="row" style="align-items:flex-start;justify-content:space-between;margin-bottom:var(--s4);">
+          <p class="lead" style="max-width:52ch;">첫날 행동 4개를 ‘당길 수 있는 레버’ 후보로 보고, 같은 초기 활동량을 <strong>보정한 뒤에도 효과가 남는지</strong> 확인했다.</p>
+          <span class="stamp reject">관측 보정으로는 양성 효과 확정 불가</span>
+        </div>
+        <table>
+          <thead><tr><th>레버 (후보)</th><th class="r">단순 연관</th><th></th><th class="r">보정 후</th><th>판정</th></tr></thead>
+          <tbody>
+            <tr class="band"><td class="lever">카트 담기<span class="en">cart</span></td><td class="num r">+16.0pp</td><td class="arrow">→</td><td class="num r neg">+3.2pp</td><td><span class="verdict v-bad">착시 · 효과 소멸</span></td></tr>
+            <tr><td class="lever">탐색 폭<span class="en">cat ≥ 3</span></td><td class="num r">+25.4pp</td><td class="arrow">→</td><td class="num r neg">−6.5pp</td><td><span class="verdict v-bad">부호 반전</span></td></tr>
+            <tr class="band"><td class="lever">오퍼 넣기<span class="en">offer</span></td><td class="num r">+23.0pp</td><td class="arrow">→</td><td class="num r v-na">비교 불가</td><td><span class="verdict v-na">식별 불가 · 겹침 부족</span></td></tr>
+            <tr><td class="lever">찜 누르기<span class="en">like ≥ 3</span></td><td class="num r">+30.5pp</td><td class="arrow">→</td><td class="num r v-na">비교 불가</td><td><span class="verdict v-na">식별 불가 · 겹침 부족</span></td></tr>
+          </tbody>
+        </table>
+        <div class="call warn" style="margin-top:var(--s5);">
+          <span class="lbl">두 갈래 실패</span>
+          <p><strong>① 비교할 유저가 있는 레버</strong>(카트·탐색 폭)는 보정하면 효과가 0이거나 음수. &nbsp;<strong>② 신호가 큰 레버</strong>(오퍼·찜)는 비교할 유저 자체가 없어 판정조차 불가능하다.</p>
+        </div>
+        <p class="cap" style="margin-top:var(--s4);">보정 후 = 교란(숨은 공통 원인) 보정 후 추정 · ‘비교 불가’ = 대조군과 겹치는 구간 부족 · 기준 모집단(끝까지 관측된 유저)은 코호트 50.1%와 다름 · 방법 세부는 부록.</p>
+      </div>
+    </section>
+
+    <!-- ═══ 07 · CLIMAX B — why (twins) ═══════════════════════ -->
+    <section class="slide center" data-tick="왜 무너지나">
+      <header class="mast"><span class="kicker"><span class="rn">Ⅲ.</span> 이 상관을 인과로 볼 수 있나 · WHY</span><span class="folio">07 / 09</span></header>
+      <div class="body vcenter" style="gap:var(--s6);">
+        <h2 style="border:none;font-size:var(--fs-h1);margin:0;">겹치는 <span class="accent">비교군</span>이 없다</h2>
+        <div class="pull" style="font-size:25px;max-width:30ch;">인과를 따지려면 처치(그 행동)만 다르고 나머지 조건은 비슷한 <em>비교군이 양쪽에</em> 있어야 한다 — positivity(겹침) 가정. 겹침이 없으면 보정은 <em>데이터 밖을 추측하는 일</em>이 된다.</div>
+        <div class="row" style="gap:var(--s5);max-width:none;">
+          <div class="call warn" style="flex:1;">
+            <span class="lbl">① 겹침이 있을 때 · 카트·탐색 폭</span>
+            <p>비교해 보면 효과가 <strong>사라지거나 뒤집힌다.</strong> 돌아온 건 행동이 아니라 ‘원래 활발한 유저’였다.</p>
+          </div>
+          <div class="call warn" style="flex:1;">
+            <span class="lbl">② 겹침이 없을 때 · 오퍼·찜</span>
+            <p>활동량이 처치를 거의 결정해 <strong>겹치는 비교군이 없다.</strong> 신호가 커도 인과 추정은 불가능하다.</p>
+          </div>
+        </div>
+        <div class="call" style="border-left-width:4px;">
+          <span class="lbl">결론 → 핸드오프</span>
+          <p style="font-size:var(--fs-lead);"><strong>관측 로그만으로는 ‘당겨도 되는 레버’를 확정할 수 없다.</strong> → 그래서 결정을 멈추지 않고, <strong>실험으로 넘긴다.</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 08 · A/B DESIGN ═══════════════════════════════════ -->
+    <section class="slide" data-tick="A/B 설계">
+      <header class="mast"><span class="kicker"><span class="rn">Ⅳ.</span> 실험 설계 · EXPERIMENT</span><span class="folio">08 / 09</span></header>
+      <h2>그래서, <span class="accent">실험으로 답한다</span></h2>
+      <div class="body">
+        <div class="pull" style="margin-bottom:var(--s5);max-width:64ch;">관측 신호로 레버를 단정하지 않고, 제품 결정을 <em>직접 무작위 배정 실험(A/B)</em>으로 넘긴다.</div>
+        <div class="row" style="gap:var(--s6);align-items:stretch;">
+          <div class="col wide">
+            <div class="spec">
+              <div class="cell"><div class="k">가설</div><div class="v">첫 세션 탐색 폭 ↑ <small>→ D7 재방문 ↑</small></div></div>
+              <div class="cell"><div class="k">처치 (실험군 변화)</div><div class="v">인접 카테고리 · 저장 후보 노출 <small>(가벼운 탐색 유도)</small></div></div>
+              <div class="cell"><div class="k">배정</div><div class="v">유저 단위 50 / 50</div></div>
+              <div class="cell"><div class="k">주지표</div><div class="v">D7 재방문 <small>(base 50.1%)</small></div></div>
+              <div class="cell"><div class="k">안전장치 (가드레일)</div><div class="v"><small>구매완료 · 즉시이탈 · 세션품질 · 배정비율(SRM)</small></div></div>
+              <div class="cell"><div class="k">탐지 최소 효과 (MDE)</div><div class="v">2.0pp</div></div>
+            </div>
+          </div>
+          <div class="col narrow vcenter" style="gap:var(--s3);">
+            <div class="money">
+              <div class="fig" style="font-size:84px;">9,805<span class="unit" style="font-size:.22em;">명/그룹</span></div>
+              <div class="rule-under"></div>
+              <div class="cap">필요 표본 · 예상 ~4.7주</div>
+            </div>
+          </div>
+        </div>
+        <table style="margin-top:var(--s5);">
+          <thead><tr><th>판정</th><th>사전 등록 규칙</th></tr></thead>
+          <tbody>
+            <tr class="band"><td class="lever pos">SHIP / 확대</td><td>D7 상승폭 ≥ 2.0pp 이고 가드레일 악화 없음</td></tr>
+            <tr><td class="lever" style="color:var(--ochre)">ITERATE</td><td>D7 상승폭 0 ~ 2.0pp · 보조지표 개선 시</td></tr>
+            <tr class="band"><td class="lever neg">STOP</td><td>D7 상승폭 ≤ 0 또는 즉시이탈 +1.0pp 초과</td></tr>
+            <tr><td class="lever neg">INVALIDATE</td><td>배정비율 깨짐(SRM) · 로깅 결측 · 처치 오염</td></tr>
+          </tbody>
+        </table>
+        <p class="cap" style="margin-top:var(--s3);">탐지 가능한 최소 효과(MDE)는 ‘예측 효과’가 아니라 실험이 탐지할 수 있는 하한 · 구매완료율(4.4%)은 표본이 작아 단독 중단 규칙 대신 모니터링 가드레일로 둔다.</p>
+      </div>
+    </section>
+
+    <!-- ═══ 09 · CLOSE — judgment & honest limits (merged) ═══ -->
+    <section class="slide" data-tick="맺음">
+      <header class="mast"><span class="kicker">맺음 · IN SUM</span><span class="folio">09 / 09</span></header>
+      <h2>이 분석이 <span class="accent">보여주는 것</span></h2>
+      <div class="body">
+        <div class="pull" style="font-size:26px;max-width:48ch;margin-bottom:var(--s5);">상관을 레버로 착각하지 않고,<br><em>막힌 데이터를 실행 가능한 실험으로</em> 바꿨다.</div>
+        <div class="row" style="gap:var(--s7);align-items:flex-start;">
+          <div class="col">
+            <h3 class="collbl">한 일</h3>
+            <ul class="clean">
+              <li><strong>지표 재정의</strong> — 희소한 전환(구매완료 4.4%) 대신 D7 재방문(50.1%)을 북극성으로</li>
+              <li><strong>원천 QA</strong> — DuckDB SQL로 어휘·가격·타임스탬프·중복키 점검 → PASS</li>
+              <li><strong>상관 ≠ 인과</strong> — 겹침 충분한 레버는 보정 시 효과 소멸, 겹침 부족한 레버는 비교 불가 → 어느 쪽도 ‘당겨도 되는 레버’ 아님</li>
+              <li><strong>실행 핸드오프</strong> — 막힌 결정을 A/B 설계(MDE 2.0pp · 9,805명/arm · 4.7주)로 넘김</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h3 class="collbl">정직한 한계</h3>
+            <ul class="clean">
+              <li><strong>관측 격차는 연관이지 효과가 아니다</strong> — 그래서 단정 대신 실험으로 넘겼다</li>
+              <li><strong>재방문 ≠ 재구매</strong> — 행동 리텐션 프록시 · 매출(GMV)은 후속 검증 영역</li>
+              <li><strong>positivity · 겹침 미충족</strong> — 일부 레버는 인과 추정 전제가 깨져 확정 불가</li>
+              <li><strong>1개월 스냅샷</strong> — 장기 churn·재구매 미관측, 결론은 단기 D7 한정</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- chrome -->
+    <div class="progress" id="progress"></div>
+    <div class="foot">
+      <button class="navbtn" id="prev">← 이전</button>
+      <span class="pageno" id="pageno">01 / 09</span>
+      <button class="navbtn" id="next">다음 →</button>
+    </div>
+    <div class="ticks" id="ticks"></div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  document.body.classList.add('js-deck');
+  const slides=[...document.querySelectorAll('.slide')];
+  const total=slides.length;
+  let cur=0;
+
+  // assign stagger index to each slide's direct children (once)
+  slides.forEach(s=>[...s.children].forEach((c,i)=>c.style.setProperty('--i',i)));
+
+  // build right-side ticks
+  const ticksWrap=document.getElementById('ticks');
+  slides.forEach((s,i)=>{
+    const t=document.createElement('div');
+    t.className='tick';
+    t.title=s.dataset.tick||('Slide '+(i+1));
+    t.addEventListener('click',()=>show(i));
+    ticksWrap.appendChild(t);
+  });
+  const ticks=[...ticksWrap.children];
+
+  const pageno=document.getElementById('pageno');
+  const progress=document.getElementById('progress');
+  const prevBtn=document.getElementById('prev');
+  const nextBtn=document.getElementById('next');
+  const pad=n=>String(n).padStart(2,'0');
+
+  function show(n){
+    cur=Math.max(0,Math.min(total-1,n));
+    slides.forEach((s,i)=>s.classList.toggle('active',i===cur));
+    ticks.forEach((t,i)=>t.classList.toggle('on',i===cur));
+    pageno.textContent=pad(cur+1)+' / '+pad(total);
+    progress.style.width=((cur+1)/total*100)+'%';
+    prevBtn.disabled=cur===0;
+    nextBtn.disabled=cur===total-1;
+  }
+  const go=d=>show(cur+d);
+
+  prevBtn.addEventListener('click',()=>go(-1));
+  nextBtn.addEventListener('click',()=>go(1));
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();go(1);}
+    else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(-1);}
+    else if(e.key==='Home'){show(0);}
+    else if(e.key==='End'){show(total-1);}
+  });
+
+  show(0);
+})();
+</script>
+</body>
+</html>
