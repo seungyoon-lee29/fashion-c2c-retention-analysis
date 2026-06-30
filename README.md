@@ -41,9 +41,9 @@ Mercari C2C 행동 로그 277만 건으로 퍼널, 코호트, 식별 진단, A/B
 
 ## 읽는 순서
 
-**[`onepager.html`](onepager.html) 한 장이면 충분하다** — 문제 -> 4단계 발견 -> A/B 핸드오프까지 60초 요약.
+**[`slides.pdf`](slides.pdf) 하나만 보면 된다** — GitHub에서 클릭하면 9장 덱이 바로 열린다 (문제 -> 퍼널 -> 코호트 -> 식별 진단 -> A/B -> 한계).
 
-> GitHub는 HTML을 바로 렌더링하지 않는다. 한 번에 보려면 **GitHub Pages**를 켜거나, 클릭하면 바로 열리는 **[`slides.pdf`](slides.pdf)**(9장 발표 덱)를 본다. 더 깊은 근거는 [`docs/index.md`](docs/index.md)(선택).
+더 보고 싶다면(선택): 웹 한 장 요약 [`onepager.html`](onepager.html)(렌더 화면은 로컬에서 열기) · 근거 문서 [`docs/index.md`](docs/index.md).
 
 ## 재현
 
