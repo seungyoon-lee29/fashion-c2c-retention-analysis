@@ -1,7 +1,7 @@
 # 패션 C2C 신규 유저 리텐션 분석
 
 **첫날 탐색 경험을 넓히면 신규 유저는 D7에 다시 돌아오는가?**  
-Mercari C2C 행동 로그 277만 건으로 퍼널, 코호트, 식별 진단, A/B 설계까지 연결한 제품 데이터 분석 포트폴리오다.
+Mercari C2C 행동 로그 277만 건으로 퍼널, 코호트, 식별 진단, A/B 설계까지 연결한 제품 데이터 분석 프로젝트다.
 
 ## Candidate Snapshot
 
@@ -41,13 +41,9 @@ Mercari C2C 행동 로그 277만 건으로 퍼널, 코호트, 식별 진단, A/B
 
 ## 읽는 순서
 
-| 대상 | 추천 경로 |
-|---|---|
-| Recruiter | [`onepager.html`](onepager.html) -> [`docs/portfolio_report.md`](docs/portfolio_report.md) |
-| Hiring manager | [`docs/portfolio_report.md`](docs/portfolio_report.md) -> [`docs/ab_test_design.md`](docs/ab_test_design.md) |
-| Technical interviewer | [`docs/data_quality_report.md`](docs/data_quality_report.md) -> [`docs/causal_report.md`](docs/causal_report.md) -> [`docs/impact_report.md`](docs/impact_report.md) -> [`docs/limitations.md`](docs/limitations.md) |
+**[`onepager.html`](onepager.html) 한 장이면 충분하다** — 문제 -> 4단계 발견 -> A/B 핸드오프까지 60초 요약.
 
-전체 문서 지도: [`docs/index.md`](docs/index.md)
+> GitHub는 HTML을 바로 렌더링하지 않는다. 한 번에 보려면 **GitHub Pages**를 켜거나, 클릭하면 바로 열리는 **[`slides.pdf`](slides.pdf)**(9장 발표 덱)를 본다. 더 깊은 근거는 [`docs/index.md`](docs/index.md)(선택).
 
 ## 재현
 
