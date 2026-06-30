@@ -48,23 +48,39 @@ def fig_gap(sweep, out: Path, dpi):
     plt.savefig(out / "gap_sweep.png", dpi=dpi); plt.close()
 
 
+# deck palette (matches slides.html / onepager.html)
+_OX, _MUT, _RULE, _INK, _SOFT, _SURF = "#7B2E2C", "#8A8173", "#B6AC97", "#1C1916", "#4A443B", "#FBF8F2"
+
+
+def _deckstyle(fig, ax):
+    fig.patch.set_facecolor(_SURF); ax.set_facecolor(_SURF)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    for s in ("left", "bottom"):
+        ax.spines[s].set_color(_RULE)
+    ax.tick_params(colors=_SOFT, labelcolor=_SOFT)
+    ax.title.set_color(_INK); ax.xaxis.label.set_color(_SOFT); ax.yaxis.label.set_color(_SOFT)
+
+
 def fig_importance(imp, out: Path, dpi):
-    plt.figure(figsize=(6, 4))
-    plt.barh(imp["feature"][::-1], imp["importance"][::-1], color="#759")
-    plt.xlabel(f"importance ({imp.attrs.get('method','?')})"); plt.title("Retention predictors")
-    plt.tight_layout(); plt.savefig(out / "drivers_importance.png", dpi=dpi); plt.close()
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.barh(imp["feature"][::-1], imp["importance"][::-1], color=_MUT)
+    ax.set_xlabel(f"importance ({imp.attrs.get('method','?')})")
+    ax.set_title("Retention predictors — predictive, not causal")
+    _deckstyle(fig, ax)
+    fig.tight_layout(); fig.savefig(out / "drivers_importance.png", dpi=dpi, facecolor=_SURF); plt.close(fig)
 
 
 def fig_impact(res, out: Path, dpi):
-    plt.figure(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(6, 4))
     labels, vals = ["naive", "g-formula", "IPTW"], [
         res["naive_delta"], res["gformula_delta"],
         res["iptw"].get("delta", np.nan)]
-    colors = ["#c93", "#2a7", "#39c"]
-    plt.bar(labels, vals, color=colors)
-    plt.ylabel("Δ retention (return) prob"); plt.axhline(0, color="k", lw=0.6)
-    plt.title("Lever impact: confounded vs adjusted"); plt.tight_layout()
-    plt.savefig(out / "impact_estimators.png", dpi=dpi); plt.close()
+    ax.bar(labels, vals, color=[_OX, _RULE, _RULE])
+    ax.set_ylabel("Δ retention (return) prob"); ax.axhline(0, color=_SOFT, lw=0.8)
+    ax.set_title("Lever impact: confounded → adjusted")
+    _deckstyle(fig, ax)
+    fig.tight_layout(); fig.savefig(out / "impact_estimators.png", dpi=dpi, facecolor=_SURF); plt.close(fig)
 
 
 def fig_markov(res, out: Path, dpi):

@@ -31,7 +31,7 @@ FLOW = [
     (
         "1",
         "퍼널",
-        "조회에서 구매완료까지 내려가는 병목을 확인하고, 구매보다 재방문을 주지표로 전환했다.",
+        "조회·찜·카트·구매의 도달률에서 최대 유출 구간(조회→찜)을 짚고, 희소한 구매 대신 재방문을 주지표로 삼았다. 오퍼·즉시구매는 병렬 경로다.",
     ),
     (
         "2",
@@ -59,8 +59,8 @@ SKILLS = [
 ]
 
 FIGURES = [
-    ("drivers_importance.png", "드라이버 중요도: 행동 강도 신호와 해석 한계"),
-    ("impact_estimators.png", "관측 추정 비교: naive 신호와 보정 추정의 간극"),
+    ("drivers_importance.png", "행동 강도(세션·활동일)가 재방문을 가장 잘 '예측'한다 — 단, 예측일 뿐 인과는 아니다."),
+    ("impact_estimators.png", "같은 활동량을 보정하면 카트 효과는 naive +16pp → 0 근처/음수로 붕괴 (naive·g-formula·IPTW)."),
 ]
 
 DOCS = [
@@ -74,56 +74,95 @@ DOCS = [
 
 CSS = """
 :root{
-  --ink:#15171c;--mut:#5d6675;--line:#e4e7ec;--bg:#f6f7f9;--card:#fff;
-  --brand:#1f4f46;--brand2:#276a5d;--teal:#0f766e;--amber:#b45309;--blue:#2563eb;
-  --soft:#eef7f5;--shadow:0 1px 2px rgba(21,23,28,.05),0 12px 34px rgba(21,23,28,.08)
+  --font-body:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-display:'Fraunces','Pretendard',Georgia,serif;
+  --font-mono:'IBM Plex Mono','Pretendard',ui-monospace,monospace;
+  --paper:#F4EFE6;--paper-deep:#ECE4D5;--surface:#FBF8F2;
+  --ink:#1C1916;--ink-soft:#4A443B;--muted:#8A8173;
+  --rule:#D9D1C0;--rule-strong:#B6AC97;
+  --oxblood:#7B2E2C;--pine:#3E6B4F;--ochre:#A9792A;
+  --shadow:0 1px 2px rgba(28,25,22,.04),0 10px 30px rgba(28,25,22,.07)
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);
-  font:15.5px/1.62 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI","Noto Sans KR",sans-serif;
-  -webkit-font-smoothing:antialiased}
-a{color:var(--blue)}
-main{max-width:1040px;margin:0 auto;padding:28px 22px 78px}
-section{margin:0 0 18px}
-.hero{background:linear-gradient(135deg,#12352f 0,#1f4f46 54%,#364153 100%);color:#fff;border-radius:18px;
-  padding:38px 42px 34px;box-shadow:0 18px 44px rgba(18,53,47,.22)}
-.eyebrow{margin:0 0 14px;color:#bfe7df;font-size:12px;font-weight:760;letter-spacing:.06em}
-.hero h1{margin:0;max-width:820px;font-size:clamp(28px,4.2vw,42px);line-height:1.14;font-weight:840}
-.sub{max-width:790px;margin:14px 0 0;color:#dce9e6;font-size:16.5px}
-.profile,.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
-.profile span,.meta span{font-size:12.5px;color:#e7f1ef;background:rgba(255,255,255,.09);
-  border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:6px 10px}
-.profile a,.meta a{color:#d8fff6}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:23px 25px;box-shadow:var(--shadow)}
-h2{font-size:18px;margin:0 0 14px}
-h3{font-size:15px;margin:8px 0 6px}
-.lead{font-size:17px;margin:0 0 16px}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--font-body);font-size:15.5px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"ss01"}
+a{color:var(--oxblood);text-underline-offset:2px}
+main{max-width:1040px;margin:0 auto;padding:30px 22px 76px}
+section{margin:0 0 16px}
+
+/* hero — editorial masthead on paper */
+.hero{background:var(--surface);border:1px solid var(--rule);border-top:3px solid var(--oxblood);
+  border-radius:4px;padding:34px 38px 30px;box-shadow:var(--shadow)}
+.eyebrow{margin:0 0 16px;color:var(--oxblood);font-family:var(--font-mono);
+  font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase}
+.hero h1{margin:0;max-width:880px;font-size:clamp(28px,4.2vw,44px);line-height:1.1;
+  font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.hero h1 .ac{color:var(--oxblood)}
+.sub{max-width:820px;margin:14px 0 0;color:var(--ink-soft);font-size:17px;line-height:1.55}
+.profile{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.profile span{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);
+  background:var(--paper-deep);border:1px solid var(--rule);border-radius:4px;padding:6px 10px}
+.profile b{font-family:var(--font-body)}
+.profile a{color:var(--oxblood)}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+  padding:22px 24px;box-shadow:var(--shadow)}
+h2{font-size:19px;margin:0 0 16px;font-weight:800;letter-spacing:-.01em;color:var(--ink);
+  padding-bottom:11px;border-bottom:1px solid var(--rule)}
+h3{font-size:15px;margin:8px 0 6px;font-weight:700;color:var(--ink)}
+.lead{font-size:16.5px;margin:0 0 16px;color:var(--ink-soft);line-height:1.6}
+.lead b,p b,td b{color:var(--ink);font-weight:700}
+
+/* metrics */
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.metric{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fafafa}
-.metric .v{font-size:27px;font-weight:840;letter-spacing:0}
-.metric.warn .v{color:var(--amber)} .metric.ok .v{color:var(--teal)}
-.metric p{margin:4px 0 0;color:var(--mut);font-size:13px;line-height:1.45}
+.metric{border:1px solid var(--rule);border-radius:4px;padding:15px 16px;background:var(--paper)}
+.metric .v{font-size:30px;font-weight:800;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.metric.warn .v{color:var(--ochre)} .metric.ok .v{color:var(--oxblood)}
+.metric p{margin:6px 0 0;color:var(--muted);font-size:12.5px;line-height:1.45}
+
+/* flow */
 .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.step{border-top:3px solid var(--brand2);background:#fbfcfd;border-radius:8px;padding:13px}
-.step .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:999px;background:var(--soft);color:var(--brand);font-weight:800}
-.step p{margin:6px 0 0;color:var(--mut);font-size:13.5px}
+.step{background:var(--paper);border:1px solid var(--rule);border-top:2px solid var(--oxblood);
+  border-radius:4px;padding:14px}
+.step .num{font-family:var(--font-display);color:var(--oxblood);font-weight:600;font-size:19px}
+.step h3{margin:6px 0 4px}
+.step p{margin:4px 0 0;color:var(--ink-soft);font-size:13px;line-height:1.5}
+
+/* table */
 table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top}
-th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+th,td{text-align:left;border-bottom:1px solid var(--rule);padding:11px 8px;vertical-align:top;color:var(--ink-soft)}
+th{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);border-bottom:1.5px solid var(--rule-strong)}
+td:first-child{color:var(--ink);font-weight:700;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+
+/* figures */
 .figs{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-figure{margin:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+figure{margin:0;border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:var(--surface)}
 figure img{display:block;width:100%;height:auto}
-figcaption{font-size:12.5px;color:var(--mut);padding:9px 11px;border-top:1px solid var(--line)}
-.next{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
-.experiment{border-left:5px solid var(--brand2)}
-.scope ul{margin:0;padding-left:20px;color:var(--mut)}
+figcaption{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-soft);
+  padding:10px 12px;border-top:1px solid var(--rule);line-height:1.5}
+
+/* next / scope / docs */
+.next{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+.experiment{border-left:3px solid var(--oxblood)}
+.experiment p{font-size:14.5px;color:var(--ink-soft);margin:0 0 10px}
+.scope ul{margin:0;padding-left:18px;color:var(--ink-soft)}
+.scope li{margin:0 0 6px}
 .doclist{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.doc{border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px}
-.doc b{display:block;font-size:13px}.doc span{color:var(--mut);font-size:12.5px}
-.foot{color:var(--mut);font-size:12px;margin:18px 2px 0}
+.doc{border:1px solid var(--rule);border-radius:4px;background:var(--paper);padding:12px}
+.doc b{display:block;font-size:12.5px;color:var(--ink);font-family:var(--font-mono)}
+.doc span{color:var(--muted);font-size:12px}
+
+.foot{color:var(--muted);font-size:11.5px;margin:18px 2px 0;font-family:var(--font-mono);line-height:1.6}
+.foot a{color:var(--oxblood)}
+.foot code{background:var(--paper-deep);padding:1px 5px;border-radius:3px}
+
 @media (max-width:860px){
   .metrics,.flow,.figs,.next,.doclist{grid-template-columns:1fr}
-  .hero{padding:30px 24px}
+  .hero{padding:28px 22px}
 }
 """
 
@@ -272,13 +311,18 @@ def build() -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>패션 C2C 신규 유저 리텐션 분석 | Portfolio One-Pager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>{CSS}</style>
 </head>
 <body>
 <main>
   <section class="hero">
     <p class="eyebrow">PRODUCT DATA ANALYSIS PORTFOLIO</p>
-    <h1>패션 C2C 신규 유저 리텐션 분석</h1>
+    <h1>패션 C2C 신규 유저 <span class="ac">리텐션 분석</span></h1>
     <p class="sub">카트가 아니라 <b>첫날 경험 폭</b>을 실험한다. Mercari 행동 로그로 퍼널, 코호트, 인과 진단, A/B 설계를 한 흐름으로 연결했다.</p>
     <div class="profile">
       <span>작성자 <b>{html.escape(AUTHOR)}</b></span>
@@ -310,6 +354,7 @@ def build() -> str:
 
   <section class="panel">
     <h2>핵심 근거</h2>
+    <p class="lead">행동 강도(세션·활동일)가 D7 재방문을 가장 잘 <b>예측</b>하지만, 같은 초기 활동량을 보정하면 카트 효과는 0 근처/음수로 사라진다. <b>예측력 ≠ 인과</b> — 그래서 관측 추정을 단정하지 않고 실험으로 넘긴다.</p>
     <div class="figs">{_figures()}</div>
   </section>
 
